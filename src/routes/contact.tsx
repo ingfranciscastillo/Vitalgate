@@ -9,7 +9,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { sendContactMessage } from "@/lib/contact.functions";
+import { CONTACT_LIMITS, sendContactMessage } from "@/lib/contact.functions";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/contact")({
@@ -35,6 +35,7 @@ function Contact() {
 	const [name, setName] = useState("");
 	const [email, setEmail] = useState("");
 	const [message, setMessage] = useState("");
+	const [website, setWebsite] = useState("");
 
 	const sendMutation = useMutation({
 		mutationFn: sendContactMessage,
@@ -71,7 +72,9 @@ function Contact() {
 							className="grid gap-4"
 							onSubmit={(e) => {
 								e.preventDefault();
-								sendMutation.mutate({ data: { name, email, message } });
+								sendMutation.mutate({
+									data: { name, email, message, website },
+								});
 							}}
 						>
 							<div className="grid gap-4 sm:grid-cols-2">
@@ -81,6 +84,7 @@ function Contact() {
 										id="contact-name"
 										value={name}
 										onChange={(e) => setName(e.target.value)}
+										maxLength={CONTACT_LIMITS.name}
 										required
 									/>
 								</div>
@@ -91,6 +95,7 @@ function Contact() {
 										type="email"
 										value={email}
 										onChange={(e) => setEmail(e.target.value)}
+										maxLength={CONTACT_LIMITS.email}
 										required
 									/>
 								</div>
@@ -102,7 +107,25 @@ function Contact() {
 									rows={5}
 									value={message}
 									onChange={(e) => setMessage(e.target.value)}
+									maxLength={CONTACT_LIMITS.message}
 									required
+								/>
+							</div>
+							{/* Honeypot: off-screen and skipped by keyboard and screen
+							    readers, so only bots fill it in. */}
+							<div
+								aria-hidden="true"
+								className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
+							>
+								<label htmlFor="contact-website">Website</label>
+								<input
+									id="contact-website"
+									name="website"
+									type="text"
+									tabIndex={-1}
+									autoComplete="off"
+									value={website}
+									onChange={(e) => setWebsite(e.target.value)}
 								/>
 							</div>
 							<Button

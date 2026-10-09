@@ -28,6 +28,7 @@ export async function sendEmail(opts: {
 	to: string[];
 	subject: string;
 	html: string;
+	replyTo?: string;
 }): Promise<void> {
 	if (opts.to.length === 0) return;
 	const resend = getResendClient();
@@ -36,6 +37,7 @@ export async function sendEmail(opts: {
 		to: opts.to,
 		subject: opts.subject,
 		html: opts.html,
+		replyTo: opts.replyTo,
 	});
 	if (error) throw new Error(`Resend: ${error.message}`);
 }

@@ -1,50 +1,83 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
+import { consumeRateLimit, getClientIp } from "@/lib/rate-limit.server";
 
-interface ContactInput {
-	name: string;
-	email: string;
-	message: string;
-}
+/** Also mirrored as maxLength on the form fields in routes/contact.tsx. */
+export const CONTACT_LIMITS = { name: 100, email: 254, message: 5000 };
 
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const contactSchema = z.object({
+	name: z
+		.string()
+		.trim()
+		.min(1, "Enter your name.")
+		.max(CONTACT_LIMITS.name, "Name is too long."),
+	email: z
+		.email("Enter a valid email address.")
+		.trim()
+		.max(CONTACT_LIMITS.email, "Email is too long."),
+	message: z
+		.string()
+		.trim()
+		.min(1, "Enter a message.")
+		.max(
+			CONTACT_LIMITS.message,
+			`Keep the message under ${CONTACT_LIMITS.message} characters.`,
+		),
+	/** Honeypot: hidden from people, filled in by naive bots. */
+	website: z.string().max(200).optional(),
+});
+
+type ContactInput = z.input<typeof contactSchema>;
 
 /**
- * Relays the public contact form to whoever should read it — there's no
- * inbox wired into this app, so CONTACT_EMAIL just names an external one.
- * Reuses the same Resend sender as the weekly digest; see email.server.ts's
- * note on why a recipient outside the Resend account's own address needs a
- * verified sending domain to actually receive it.
+ * Relays the public contact form to CONTACT_EMAIL through Resend. It's an
+ * unauthenticated endpoint that sends email, so it's rate limited per IP and
+ * bounded in size — otherwise a script could flood the inbox and burn the
+ * Resend quota that invitations and digests depend on.
  */
 export const sendContactMessage = createServerFn({ method: "POST" })
-	.validator((data: ContactInput) => data)
-	.handler(async ({ data }) => {
-		const name = data.name.trim();
-		const email = data.email.trim();
-		const message = data.message.trim();
-		if (!name || !message) {
-			throw new Error("Name and message are required.");
+	.validator((input: ContactInput) => {
+		const result = contactSchema.safeParse(input);
+		if (!result.success) {
+			throw new Error(result.error.issues[0]?.message ?? "Invalid message.");
 		}
-		if (!EMAIL_PATTERN.test(email)) {
-			throw new Error("Enter a valid email address.");
+		return result.data;
+	})
+	.handler(async ({ data }) => {
+		// Pretend it worked so the bot has no signal to adapt to.
+		if (data.website) return;
+
+		const allowed = await consumeRateLimit(`contact:${getClientIp()}`, {
+			max: 3,
+			windowSeconds: 10 * 60,
+		});
+		if (!allowed) {
+			throw new Error(
+				"You've sent several messages recently. Please wait a few minutes and try again.",
+			);
 		}
 
 		const to = process.env.CONTACT_EMAIL;
 		if (!to) {
+			// Server log only — visitors don't need to see deployment config.
+			console.error(
+				"CONTACT_EMAIL is not set; add it to the env vars to receive contact form messages.",
+			);
 			throw new Error(
-				"CONTACT_EMAIL is not set. Add it to .env.local (and to Vercel's " +
-					"project env vars) with the address that should receive contact " +
-					"form messages.",
+				"The contact form is temporarily unavailable. Please try again later.",
 			);
 		}
 
 		await sendEmail({
 			to: [to],
-			subject: `Vitalgate contact form: ${name}`,
+			replyTo: data.email,
+			// No line breaks in a header, whatever the visitor typed.
+			subject: `Vitalgate contact form: ${data.name.replace(/[\r\n]+/g, " ")}`,
 			html: `
-				<p><strong>From:</strong> ${escapeHtml(name)} (${escapeHtml(email)})</p>
-				<p>${escapeHtml(message).replace(/\n/g, "<br>")}</p>
+				<p><strong>From:</strong> ${escapeHtml(data.name)} (${escapeHtml(data.email)})</p>
+				<p>${escapeHtml(data.message).replace(/\n/g, "<br>")}</p>
 			`.trim(),
 		});
 	});
