@@ -1,9 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
-import { account, integrations, repos } from "@/db/schema";
+import { account, githubInstallations, integrations, repos } from "@/db/schema";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import { ensureSession } from "@/lib/auth.functions";
+import { getInstallUrl, isGithubAppConfigured } from "@/lib/github-app.server";
 import {
 	deleteIntegration,
 	getDiscordAuthorizeUrl,
@@ -16,7 +17,14 @@ import { getOrgPlan } from "@/lib/plan.server";
 import { integrationProviderSchema, parseInput } from "@/lib/validation";
 
 export interface IntegrationsOverview {
-	github: { connected: boolean; repoCount: number };
+	github: {
+		connected: boolean;
+		repoCount: number;
+		/** GitHub accounts that installed the Vitalgate GitHub App for this workspace. */
+		installations: { accountLogin: string; accountType: string }[];
+		/** False until the GITHUB_APP_* env vars are set on this deployment. */
+		appConfigured: boolean;
+	};
 	slack: { connected: boolean; label: string | null };
 	discord: { connected: boolean; label: string | null };
 	/** Whether the org's weekly_digest alert rule is on — actual control lives on /alerts, this just reflects it. */
@@ -31,8 +39,8 @@ export const getIntegrationsOverview = createServerFn({
 	const session = await ensureSession();
 	const organizationId = session.session.activeOrganizationId;
 
-	const [[githubAccount], connected, orgRepos, rules, plan] = await Promise.all(
-		[
+	const [[githubAccount], connected, orgRepos, rules, plan, installations] =
+		await Promise.all([
 			db
 				.select({ id: account.id })
 				.from(account)
@@ -62,13 +70,26 @@ export const getIntegrationsOverview = createServerFn({
 			organizationId
 				? getOrgPlan(organizationId)
 				: Promise.resolve("free" as const),
-		],
-	);
+			organizationId
+				? db
+						.select({
+							accountLogin: githubInstallations.accountLogin,
+							accountType: githubInstallations.accountType,
+						})
+						.from(githubInstallations)
+						.where(eq(githubInstallations.organizationId, organizationId))
+				: Promise.resolve([]),
+		]);
 
 	const byProvider = new Map(connected.map((r) => [r.provider, r.label]));
 
 	return {
-		github: { connected: !!githubAccount, repoCount: orgRepos.length },
+		github: {
+			connected: !!githubAccount,
+			repoCount: orgRepos.length,
+			installations,
+			appConfigured: isGithubAppConfigured(),
+		},
 		slack: {
 			connected: byProvider.has("slack"),
 			label: byProvider.get("slack") ?? null,
@@ -110,3 +131,13 @@ export const disconnectIntegration = createServerFn({ method: "POST" })
 
 		await deleteIntegration(organizationId, provider);
 	});
+
+/** URL that starts the GitHub App installation for the active workspace. Owners and admins only. */
+export const getGithubInstallUrl = createServerFn({ method: "GET" }).handler(
+	async (): Promise<string> => {
+		const { organizationId } = await requireOrgAdmin();
+		// Same signed, short-lived state as Slack/Discord: it tells
+		// /api/github/setup which workspace started the install.
+		return getInstallUrl(signOAuthState(organizationId));
+	},
+);

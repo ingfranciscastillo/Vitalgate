@@ -29,6 +29,7 @@ import { Route as AuthenticatedRepositoriesRepoIdRouteImport } from './routes/_a
 import { Route as AuthenticatedRepositoriesNewRouteImport } from './routes/_authenticated/repositories/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCronWeeklyDigestRouteImport } from './routes/api/cron/weekly-digest'
+import { Route as ApiGithubSetupRouteImport } from './routes/api/github/setup'
 import { Route as ApiIntegrationsDiscordCallbackRouteImport } from './routes/api/integrations/discord/callback'
 import { Route as ApiIntegrationsSlackCallbackRouteImport } from './routes/api/integrations/slack/callback'
 
@@ -135,6 +136,11 @@ const ApiCronWeeklyDigestRoute = ApiCronWeeklyDigestRouteImport.update({
   path: '/api/cron/weekly-digest',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGithubSetupRoute = ApiGithubSetupRouteImport.update({
+  id: '/api/github/setup',
+  path: '/api/github/setup',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIntegrationsDiscordCallbackRoute =
   ApiIntegrationsDiscordCallbackRouteImport.update({
     id: '/api/integrations/discord/callback',
@@ -166,6 +172,7 @@ export interface FileRoutesByFullPath {
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
+  '/api/github/setup': typeof ApiGithubSetupRoute
   '/pulls/': typeof AuthenticatedPullsIndexRoute
   '/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -189,6 +196,7 @@ export interface FileRoutesByTo {
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
+  '/api/github/setup': typeof ApiGithubSetupRoute
   '/pulls': typeof AuthenticatedPullsIndexRoute
   '/repositories': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -214,6 +222,7 @@ export interface FileRoutesById {
   '/_authenticated/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
+  '/api/github/setup': typeof ApiGithubSetupRoute
   '/_authenticated/pulls/': typeof AuthenticatedPullsIndexRoute
   '/_authenticated/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -239,6 +248,7 @@ export interface FileRouteTypes {
     | '/repositories/new'
     | '/api/auth/$'
     | '/api/cron/weekly-digest'
+    | '/api/github/setup'
     | '/pulls/'
     | '/repositories/'
     | '/api/integrations/discord/callback'
@@ -262,6 +272,7 @@ export interface FileRouteTypes {
     | '/repositories/new'
     | '/api/auth/$'
     | '/api/cron/weekly-digest'
+    | '/api/github/setup'
     | '/pulls'
     | '/repositories'
     | '/api/integrations/discord/callback'
@@ -286,6 +297,7 @@ export interface FileRouteTypes {
     | '/_authenticated/repositories/new'
     | '/api/auth/$'
     | '/api/cron/weekly-digest'
+    | '/api/github/setup'
     | '/_authenticated/pulls/'
     | '/_authenticated/repositories/'
     | '/api/integrations/discord/callback'
@@ -304,6 +316,7 @@ export interface RootRouteChildren {
   ApiIngestRoute: typeof ApiIngestRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
+  ApiGithubSetupRoute: typeof ApiGithubSetupRoute
   ApiIntegrationsDiscordCallbackRoute: typeof ApiIntegrationsDiscordCallbackRoute
   ApiIntegrationsSlackCallbackRoute: typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -450,6 +463,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiCronWeeklyDigestRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/github/setup': {
+      id: '/api/github/setup'
+      path: '/api/github/setup'
+      fullPath: '/api/github/setup'
+      preLoaderRoute: typeof ApiGithubSetupRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/discord/callback': {
       id: '/api/integrations/discord/callback'
       path: '/api/integrations/discord/callback'
@@ -507,6 +527,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiIngestRoute: ApiIngestRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,
+  ApiGithubSetupRoute: ApiGithubSetupRoute,
   ApiIntegrationsDiscordCallbackRoute: ApiIntegrationsDiscordCallbackRoute,
   ApiIntegrationsSlackCallbackRoute: ApiIntegrationsSlackCallbackRoute,
 }

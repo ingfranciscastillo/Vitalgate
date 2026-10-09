@@ -26,6 +26,7 @@ import { authClient } from "@/lib/auth-client";
 import { timeAgo } from "@/lib/format";
 import {
 	disconnectIntegration,
+	getGithubInstallUrl,
 	getIntegrationAuthorizeUrl,
 } from "@/lib/integrations.functions";
 import { integrationsOverviewQueryOptions } from "@/lib/integrations.queries";
@@ -39,6 +40,12 @@ import { orgReposQueryOptions } from "@/lib/repos.queries";
 import { parseUserAgent } from "@/lib/user-agent";
 
 export const Route = createFileRoute("/_authenticated/settings")({
+	// Only read to pick the opening tab; IntegrationsTab reads the full
+	// ?integration=&status=&reason= itself and then clears it.
+	validateSearch: (search): { integration?: string } => ({
+		integration:
+			typeof search.integration === "string" ? search.integration : undefined,
+	}),
 	head: () => ({ meta: [{ title: "Settings: Vitalgate" }] }),
 	component: Settings,
 });
@@ -214,9 +221,9 @@ function IntegrationCardShell({
 function IntegrationsTab() {
 	const { data, isPending } = useQuery(integrationsOverviewQueryOptions());
 	const queryClient = useQueryClient();
-	const [connecting, setConnecting] = useState<IntegrationProvider | null>(
-		null,
-	);
+	const [connecting, setConnecting] = useState<
+		IntegrationProvider | "github" | null
+	>(null);
 	const reduce = useReducedMotion();
 
 	// The OAuth callback redirects back here with ?integration=&status=&reason=
@@ -227,7 +234,12 @@ function IntegrationsTab() {
 		const status = params.get("status");
 		if (!integration || !status) return;
 
-		const providerName = integration === "slack" ? "Slack" : "Discord";
+		const providerName =
+			integration === "slack"
+				? "Slack"
+				: integration === "discord"
+					? "Discord"
+					: "GitHub";
 		if (status === "connected") {
 			toast.success(`${providerName} connected`);
 		} else {
@@ -251,6 +263,16 @@ function IntegrationsTab() {
 		onError: (err) =>
 			toast.error(err instanceof Error ? err.message : "Could not disconnect"),
 	});
+
+	const installGithubApp = async () => {
+		setConnecting("github");
+		try {
+			window.location.href = await getGithubInstallUrl();
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Could not open GitHub");
+			setConnecting(null);
+		}
+	};
 
 	const connect = async (provider: IntegrationProvider) => {
 		setConnecting(provider);
@@ -287,18 +309,36 @@ function IntegrationsTab() {
 					<IntegrationCardShell
 						icon={GithubLogoIcon}
 						name="GitHub"
-						connected={data.github.connected}
+						connected={data.github.installations.length > 0}
 						desc={
-							data.github.connected
-								? `${data.github.repoCount} repo${data.github.repoCount === 1 ? "" : "s"} connected`
-								: "Not connected"
+							data.github.installations.length > 0
+								? `App installed on ${data.github.installations.map((i) => `@${i.accountLogin}`).join(", ")} · ${data.github.repoCount} repo${data.github.repoCount === 1 ? "" : "s"} connected`
+								: "Install the Vitalgate GitHub App to choose which repos it can access."
 						}
 					>
-						<Link to="/repositories">
-							<Button variant="outline" size="sm">
-								Manage
-							</Button>
-						</Link>
+						<div className="flex flex-wrap gap-2">
+							{data.github.appConfigured && (
+								<Button
+									size="sm"
+									variant={
+										data.github.installations.length > 0 ? "outline" : "default"
+									}
+									disabled={connecting === "github" || !isAdmin}
+									onClick={installGithubApp}
+								>
+									{connecting === "github"
+										? "Opening GitHub…"
+										: data.github.installations.length > 0
+											? "Add account or repos"
+											: "Install GitHub App"}
+								</Button>
+							)}
+							<Link to="/repositories">
+								<Button variant="outline" size="sm">
+									Manage repos
+								</Button>
+							</Link>
+						</div>
 					</IntegrationCardShell>
 				</motion.div>
 
@@ -772,9 +812,12 @@ function BillingCard() {
 }
 
 function Settings() {
+	const { integration } = Route.useSearch();
+	const initialTab = integration ? "integrations" : "org";
 	return (
 		<AppShell title="Settings">
-			<Tabs defaultValue="org">
+			{/* Integration callbacks land on ?integration=…; open that tab so its toast shows. */}
+			<Tabs defaultValue={initialTab}>
 				<TabsList>
 					<TabsTrigger value="org">Organization</TabsTrigger>
 					<TabsTrigger value="integrations">Integrations</TabsTrigger>

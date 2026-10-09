@@ -278,6 +278,37 @@ export const integrationsRelations = relations(integrations, ({ one }) => ({
 	}),
 }));
 
+/**
+ * A Vitalgate GitHub App installation linked to a workspace: the GitHub
+ * account (a user or an organization) that installed the app, and which
+ * workspace may use its installation tokens. One workspace can link several
+ * accounts; the same installation is only ever linked to a workspace after
+ * the linking user proved they control that GitHub account
+ * (see /api/github/setup).
+ */
+export const githubInstallations = pgTable(
+	"github_installations",
+	{
+		id: id(),
+		organizationId: text("organization_id")
+			.notNull()
+			.references(() => organization.id, { onDelete: "cascade" }),
+		/** GitHub's numeric installation id, as text (like githubRepoId). */
+		installationId: text("installation_id").notNull(),
+		accountLogin: text("account_login").notNull(),
+		accountType: text("account_type")
+			.notNull()
+			.$type<"User" | "Organization">(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(t) => [
+		uniqueIndex("github_installations_org_installation_unique").on(
+			t.organizationId,
+			t.installationId,
+		),
+	],
+);
+
 export type NewRepo = typeof repos.$inferInsert;
 export type RepoRow = typeof repos.$inferSelect;
 export type NewBudget = typeof budgets.$inferInsert;
@@ -294,3 +325,4 @@ export type NewNotificationPref = typeof notificationPrefs.$inferInsert;
 export type NotificationPrefRow = typeof notificationPrefs.$inferSelect;
 export type NewIntegration = typeof integrations.$inferInsert;
 export type IntegrationRow = typeof integrations.$inferSelect;
+export type GithubInstallationRow = typeof githubInstallations.$inferSelect;
