@@ -79,7 +79,6 @@ function Landing() {
 	return (
 		<MarketingShell>
 			<Hero />
-			<LogoStrip />
 			<Flow />
 			<Features />
 			<DashboardPreview />
@@ -160,42 +159,6 @@ function Hero() {
 				</Reveal>
 			</div>
 		</section>
-	);
-}
-
-function LogoStrip() {
-	const logos = [
-		"linear",
-		"vercel",
-		"datadog",
-		"grafana",
-		"sentry",
-		"planetscale",
-	];
-	const track = [...logos, ...logos];
-	return (
-		<div className="border-b border-border py-8">
-			<div className="mx-auto max-w-3xl px-5 text-center text-xs uppercase tracking-wider text-muted-foreground">
-				Trusted by engineers from
-			</div>
-			<div className="group relative mt-5 overflow-hidden">
-				<div className="animate-marquee flex w-max items-center gap-16 group-hover:paused motion-reduce:animate-none">
-					{track.map((slug, i) => (
-						<img
-							// biome-ignore lint/suspicious/noArrayIndexKey: static marquee, logos repeated for the loop
-							key={`${slug}-${i}`}
-							src={`https://cdn.simpleicons.org/${slug}`}
-							alt={slug}
-							width={24}
-							height={24}
-							loading="lazy"
-							decoding="async"
-							className="h-6 w-auto shrink-0 opacity-50 grayscale transition hover:opacity-90 hover:grayscale-0"
-						/>
-					))}
-				</div>
-			</div>
-		</div>
 	);
 }
 

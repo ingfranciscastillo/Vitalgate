@@ -7,14 +7,14 @@ import {
 } from "@phosphor-icons/react";
 import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Logo } from "@/components/logo";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth.functions";
 import { authClient } from "@/lib/auth-client";
 import { linkUnderline } from "@/lib/link-hover";
-import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
+import { EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/login")({
@@ -87,9 +87,13 @@ function Login() {
 					<PrCheckPreview />
 				</motion.div>
 
-				<motion.div variants={item}>
-					<TestimonialCarousel />
-				</motion.div>
+				<motion.p
+					variants={item}
+					className="max-w-md text-sm leading-relaxed text-muted-foreground"
+				>
+					Lighthouse runs on your own GitHub Actions runner. Only the resulting
+					metrics are sent back to Vitalgate and checked against your budgets.
+				</motion.p>
 			</motion.aside>
 
 			<section className="relative flex flex-col px-6 py-8 sm:px-10">
@@ -195,105 +199,6 @@ function Login() {
 					© {new Date().getFullYear()} Vitalgate Labs
 				</div>
 			</section>
-		</div>
-	);
-}
-
-const TESTIMONIALS = [
-	{
-		quote:
-			"Vitalgate caught a 38% LCP regression before it hit prod. It paid for itself in one sprint.",
-		name: "Marta Ruiz",
-		role: "Staff Engineer, Acme Storefront",
-		initials: "MR",
-	},
-	{
-		quote:
-			"Our PR reviews used to skip performance entirely. Now it's a required check, not a suggestion.",
-		name: "Noor Aljasmi",
-		role: "Engineering Manager, Rivergate",
-		initials: "NA",
-	},
-	{
-		quote:
-			"Per-route budgets caught a checkout regression our monitoring never would have flagged.",
-		name: "Tomás Ferreira",
-		role: "Platform Lead, Basalt Health",
-		initials: "TF",
-	},
-];
-
-function TestimonialCarousel() {
-	const [index, setIndex] = useState(0);
-	const reduce = useReducedMotion();
-
-	// `index` is intentionally a dependency: restarts the 6s countdown whenever
-	// the slide changes (auto or manual) so a manual click isn't overridden by
-	// a stale timer a moment later.
-	// biome-ignore lint/correctness/useExhaustiveDependencies: see comment above
-	useEffect(() => {
-		if (reduce) return;
-		const id = setInterval(() => {
-			setIndex((i) => (i + 1) % TESTIMONIALS.length);
-		}, 6000);
-		return () => clearInterval(id);
-	}, [reduce, index]);
-
-	const t = TESTIMONIALS[index];
-
-	return (
-		<div className="max-w-md">
-			<div className="min-h-20">
-				<AnimatePresence mode="wait">
-					<motion.div
-						key={index}
-						initial={reduce ? false : { opacity: 0, y: 6 }}
-						animate={{
-							opacity: 1,
-							y: 0,
-							transition: { duration: 0.35, ease: EASE_OUT },
-						}}
-						exit={
-							reduce
-								? undefined
-								: {
-										opacity: 0,
-										y: -4,
-										transition: { duration: 0.2, ease: EASE_IN },
-									}
-						}
-					>
-						<p className="text-base leading-relaxed text-foreground/90">
-							"{t.quote}"
-						</p>
-						<div className="mt-4 flex items-center gap-3 text-sm text-muted-foreground">
-							<div className="grid h-8 w-8 shrink-0 place-items-center bg-primary/15 font-mono text-xs text-primary">
-								{t.initials}
-							</div>
-							<div>
-								<div className="font-medium text-foreground">{t.name}</div>
-								<div className="text-xs">{t.role}</div>
-							</div>
-						</div>
-					</motion.div>
-				</AnimatePresence>
-			</div>
-			<div className="mt-8 flex items-center gap-1.5">
-				{TESTIMONIALS.map((testimonial, i) => (
-					<button
-						key={testimonial.name}
-						type="button"
-						onClick={() => setIndex(i)}
-						aria-label={`Show testimonial from ${testimonial.name}`}
-						aria-current={i === index}
-						className={`h-1.5 rounded-full transition-all duration-200 ${
-							i === index
-								? "w-6 bg-brand"
-								: "w-1.5 bg-foreground/20 hover:bg-foreground/40"
-						}`}
-					/>
-				))}
-			</div>
 		</div>
 	);
 }
