@@ -76,13 +76,16 @@ function PrivacyPolicy() {
 								in Settings, we store only a hash of it.
 							</p>
 							<p>
-								<strong>GitHub access token.</strong> Signing in gives Vitalgate
-								an OAuth access token for your GitHub account, with permission
-								to read and write your repositories and their workflows. We
-								store it so we can list your repositories and add, update, or
-								remove the Vitalgate workflow file in the ones you connect. We
-								don't use it for anything else. You can revoke it at any time
-								from your GitHub settings.
+								<strong>GitHub access.</strong> Signing in gives Vitalgate an
+								OAuth token limited to your GitHub profile, email, and
+								organization memberships; we use it only to confirm who you are
+								and, when you link a GitHub organization, that you're one of its
+								owners. Access to repositories comes separately from the
+								Vitalgate GitHub App, only on the repositories you choose when
+								installing it, and is used to read the files needed to set up
+								the workflow, add or update that workflow, and comment results
+								on pull requests. You can revoke either at any time from your
+								GitHub settings.
 							</p>
 							<p>
 								<strong>Workspace and team data.</strong> Your workspace name

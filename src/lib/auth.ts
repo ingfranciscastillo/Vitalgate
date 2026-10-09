@@ -31,30 +31,25 @@ export const auth = betterAuth({
 		disableSignUp: true,
 	},
 	account: {
-		// The GitHub token carries `repo` + `workflow` scopes — write access to
-		// every repo the user can reach. Encrypted at rest; read it back only
-		// through getGithubAccessToken (auth.api.getAccessToken), never from
-		// the account table directly. Tokens stored before this was enabled
-		// are still read as plain text and get encrypted on next sign-in.
+		// The stored GitHub OAuth token is identity-only now (see the scopes
+		// below), but accounts that signed in before repo access moved to the
+		// GitHub App may still hold a token with `repo` + `workflow`. Encrypted
+		// at rest; read it only through auth.api.getAccessToken, never from the
+		// account table directly.
 		encryptOAuthTokens: true,
 	},
 	socialProviders: {
 		github: {
 			clientId: process.env.GITHUB_CLIENT_ID as string,
 			clientSecret: process.env.GITHUB_CLIENT_SECRET as string,
-			// Classic OAuth scopes (GitHub Apps aren't wired up yet, see below):
-			// - read:user, user:email: identity for login
-			// - repo: read PR/commit data, incl. private repos. GitHub has no
-			//   read-only classic scope for private repos, only public_repo vs repo.
-			// - read:org: list an org's repos for the "connect a repository" picker
-			// - workflow: separate from `repo` on purpose — GitHub requires this
-			//   scope specifically to create/update files under
-			//   .github/workflows/*. Without it, writes there 404 (not 403,
-			//   so it looks like a random API bug instead of a missing scope).
-			//   Needed to auto-commit the Vitalgate Action on "Connect a repository".
-			// Posting check-runs/PR comments as "Vitalgate" (not as the user) needs
-			// a separate GitHub App with installation tokens, not OAuth scopes.
-			scope: ["read:user", "user:email", "repo", "read:org", "workflow"],
+			// Login is identity only. Repo access (listing repos, committing the
+			// workflow, commenting on PRs) goes through the Vitalgate GitHub App,
+			// on just the repos each account picks — see github-app.server.ts.
+			// - read:user, user:email: who is signing in
+			// - read:org: read-only, to confirm the user is an owner of a GitHub
+			//   organization before linking that org's app installation
+			//   (github-installation.server.ts)
+			scope: ["read:user", "user:email", "read:org"],
 		},
 	},
 	rateLimit: {

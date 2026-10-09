@@ -2,9 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { account, budgets, githubInstallations, repos } from "@/db/schema";
+import { budgets, githubInstallations, repos } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
-import { auth } from "@/lib/auth";
 import { ensureSession } from "@/lib/auth.functions";
 import { actionFor } from "@/lib/budgets";
 import {
@@ -15,14 +14,10 @@ import {
 	type GhRepo,
 	getPackageJson,
 	isYarnBerryLockfile,
-	listGithubRepos,
 	listInstallationRepos,
 	pickServeScript,
 } from "@/lib/github";
-import {
-	getInstallationToken,
-	isGithubAppConfigured,
-} from "@/lib/github-app.server";
+import { getInstallationToken } from "@/lib/github-app.server";
 import type { Action, MetricKey, Severity } from "@/lib/mock-data";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
@@ -36,43 +31,17 @@ import {
 import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
 
 /**
- * Goes through better-auth rather than reading account.accessToken: the
- * column is encrypted (account.encryptOAuthTokens in auth.ts), and this also
- * refreshes the token if GitHub ever issues expiring ones.
- */
-async function getGithubAccessToken(userId: string): Promise<string> {
-	const [githubAccount] = await db
-		.select({ id: account.id })
-		.from(account)
-		.where(and(eq(account.userId, userId), eq(account.providerId, "github")))
-		.limit(1);
-
-	const noAccount = new Error(
-		"No GitHub account connected. Sign in with GitHub to connect repositories.",
-	);
-	if (!githubAccount) throw noAccount;
-
-	const { accessToken } = await auth.api.getAccessToken({
-		body: { accountId: githubAccount.id, userId },
-	});
-	if (!accessToken) throw noAccount;
-	return accessToken;
-}
-
-/**
  * Every repo the workspace's GitHub App installations can access, keyed by
- * GitHub repo id, with the installation that grants it. Null when the
- * workspace hasn't installed the app yet — callers then fall back to the
- * user's OAuth token, until login stops requesting repo access.
+ * GitHub repo id, with the installation that grants it. Empty when the
+ * workspace hasn't installed the app yet.
  */
 async function getInstallationRepos(
 	organizationId: string,
-): Promise<Map<string, { repo: GhRepo; installationId: string }> | null> {
+): Promise<Map<string, { repo: GhRepo; installationId: string }>> {
 	const installations = await db
 		.select({ installationId: githubInstallations.installationId })
 		.from(githubInstallations)
 		.where(eq(githubInstallations.organizationId, organizationId));
-	if (installations.length === 0) return null;
 
 	const byRepoId = new Map<string, { repo: GhRepo; installationId: string }>();
 	for (const { installationId } of installations) {
@@ -84,22 +53,27 @@ async function getInstallationRepos(
 	return byRepoId;
 }
 
-/** Token for GitHub calls about one connected repo: its app installation's, or the user's OAuth token for repos connected before the app. */
-async function getRepoToken(
-	repo: { installationId: string | null },
-	userId: string,
-): Promise<string> {
-	return repo.installationId
-		? getInstallationToken(repo.installationId)
-		: getGithubAccessToken(userId);
+/**
+ * Token for GitHub calls about one connected repo: its app installation's.
+ * Repos connected before the GitHub App have none, and login no longer
+ * grants repo access, so they have to be reconnected through the app.
+ */
+async function getRepoToken(repo: {
+	installationId: string | null;
+}): Promise<string> {
+	if (!repo.installationId) {
+		throw new Error(
+			"This repository was connected before the Vitalgate GitHub App. Install the app on it, then reconnect it from Connect a repository.",
+		);
+	}
+	return getInstallationToken(repo.installationId);
 }
 
 export interface ConnectableRepos {
 	repos: GhRepo[];
 	/**
-	 * True when the GitHub App is set up on this deployment but the workspace
-	 * hasn't installed it yet — the connect page asks for that instead of
-	 * listing repos.
+	 * True when the workspace hasn't installed the GitHub App yet — the
+	 * connect page asks for that instead of listing repos.
 	 */
 	needsAppInstall: boolean;
 }
@@ -110,19 +84,10 @@ export const getConnectableRepos = createServerFn({ method: "GET" }).handler(
 		const organizationId = session.session.activeOrganizationId;
 		const appRepos = organizationId
 			? await getInstallationRepos(organizationId)
-			: null;
-		if (appRepos) {
-			return {
-				repos: [...appRepos.values()].map((r) => r.repo),
-				needsAppInstall: false,
-			};
-		}
-		if (isGithubAppConfigured()) return { repos: [], needsAppInstall: true };
-		// Deployments without the app keep connecting through the user's
-		// OAuth token.
+			: new Map();
 		return {
-			repos: await listGithubRepos(await getGithubAccessToken(session.user.id)),
-			needsAppInstall: false,
+			repos: [...appRepos.values()].map((r) => r.repo),
+			needsAppInstall: appRepos.size === 0,
 		};
 	},
 );
@@ -263,7 +228,7 @@ async function regenerateWorkflow(
 export const connectRepositories = createServerFn({ method: "POST" })
 	.validator(parseInput(connectRepositoriesSchema))
 	.handler(async ({ data }) => {
-		const { session, organizationId } = await requireOrgAdmin();
+		const { organizationId } = await requireOrgAdmin();
 
 		const plan = await getOrgPlan(organizationId);
 		if (!isPro(plan)) {
@@ -283,9 +248,6 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		}
 
 		const appRepos = await getInstallationRepos(organizationId);
-		const oauthToken = appRepos
-			? null
-			: await getGithubAccessToken(session.user.id);
 		// Fixed public origin, not this request's Origin header: connecting from
 		// a preview deployment must not bake a temporary URL into the user's repo.
 		const vitalgateOrigin = getAppUrl();
@@ -302,20 +264,17 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		const workflowErrors: string[] = [];
 
 		for (const requested of data.repos) {
-			// With the app installed, only repos it was granted can connect, and
-			// their details come from GitHub rather than from the browser.
-			const appRepo = appRepos?.get(requested.id);
-			if (appRepos && !appRepo) {
+			// Only repos the GitHub App was granted can connect, and their
+			// details come from GitHub rather than from the browser.
+			const appRepo = appRepos.get(requested.id);
+			if (!appRepo) {
 				workflowErrors.push(
 					`${requested.fullName}: the Vitalgate GitHub App isn't installed on this repository`,
 				);
 				continue;
 			}
-			const repo = appRepo?.repo ?? requested;
-			const installationId = appRepo?.installationId ?? null;
-			const accessToken = installationId
-				? await getInstallationToken(installationId)
-				: (oauthToken as string);
+			const { repo, installationId } = appRepo;
+			const accessToken = await getInstallationToken(installationId);
 
 			const [inserted] = await db
 				.insert(repos)
@@ -415,7 +374,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 		parseInput(z.object({ repoId: idSchema, envVarNames: envVarNamesSchema })),
 	)
 	.handler(async ({ data }) => {
-		const { session, organizationId } = await requireOrgAdmin();
+		const { organizationId } = await requireOrgAdmin();
 
 		// Scoped to the active org, not just the id — a UUID guess from
 		// another org's repo must not be editable.
@@ -440,7 +399,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 		const envVarNames = sanitizeEnvVarNames(data.envVarNames);
 		await db.update(repos).set({ envVarNames }).where(eq(repos.id, repo.id));
 
-		const accessToken = await getRepoToken(repo, session.user.id);
+		const accessToken = await getRepoToken(repo);
 		const workflowResult = await regenerateWorkflow(
 			accessToken,
 			repo,
@@ -461,7 +420,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 export const disconnectRepository = createServerFn({ method: "POST" })
 	.validator(parseInput(idSchema))
 	.handler(async ({ data: repoId }) => {
-		const { session, organizationId } = await requireOrgAdmin();
+		const { organizationId } = await requireOrgAdmin();
 
 		const [repo] = await db
 			.delete(repos)
@@ -474,6 +433,6 @@ export const disconnectRepository = createServerFn({ method: "POST" })
 			});
 		if (!repo) throw new Error("Repository not found");
 
-		const accessToken = await getRepoToken(repo, session.user.id);
+		const accessToken = await getRepoToken(repo);
 		await deleteWorkflowFile(accessToken, repo.fullName);
 	});

@@ -183,12 +183,12 @@ function Login() {
 							className="mt-6 space-y-2 text-xs text-muted-foreground"
 						>
 							<li className="flex items-center gap-2">
-								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Read
-								and write access to your repositories
+								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Only
+								your GitHub name, email and organizations
 							</li>
 							<li className="flex items-center gap-2">
-								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Used
-								only to add the Vitalgate workflow to repos you connect
+								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Repo
+								access comes later, only on repos you pick
 							</li>
 							<li className="flex items-center gap-2">
 								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Revoke

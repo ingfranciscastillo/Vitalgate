@@ -106,13 +106,14 @@ function Terms() {
 						<section>
 							<h2>4. Access to your GitHub repositories</h2>
 							<p>
-								To list your repositories and add the workflow file, Vitalgate
-								asks GitHub for access that includes reading and writing your
-								repositories and their workflows. We use that access only to run
-								the Service: listing repos you can connect, reading files needed
-								to configure the workflow (such as{" "}
+								Vitalgate gets access to your repositories through the Vitalgate
+								GitHub App, only on the repositories you choose when installing
+								it. We use that access only to run the Service: listing the
+								repositories you granted, reading files needed to configure the
+								workflow (such as{" "}
 								<span className="font-mono">package.json</span> and lockfiles),
-								and creating, updating, or removing the Vitalgate workflow file.
+								creating, updating, or removing the Vitalgate workflow file, and
+								commenting results on pull requests.
 							</p>
 							<p>
 								<strong>
@@ -122,7 +123,8 @@ function Terms() {
 								You're responsible for reviewing the workflow before merging
 								code that depends on it, and for any repository secrets you
 								choose to expose to it. You can revoke Vitalgate's access at any
-								time from your GitHub settings.
+								time by uninstalling the app or changing its repositories in
+								your GitHub settings.
 							</p>
 						</section>
 
