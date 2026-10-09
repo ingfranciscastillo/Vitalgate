@@ -5,6 +5,8 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { sendEmail } from "@/lib/email.server";
+import { escapeHtml } from "@/lib/html";
 
 function slugify(input: string) {
 	return input
@@ -124,6 +126,34 @@ export const auth = betterAuth({
 		// UI label as display text until real permission checks are designed.
 		organization({
 			allowUserToCreateOrganization: true,
+			// The link lands on /accept-invitation/$invitationId, which sends
+			// signed-out visitors through GitHub sign-in first. better-auth only
+			// lets the invitation be accepted by a user whose account email
+			// matches the invited address.
+			sendInvitationEmail: async ({
+				id,
+				email,
+				role,
+				organization,
+				inviter,
+			}) => {
+				const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+				const link = `${appUrl}/accept-invitation/${id}`;
+				const orgName = escapeHtml(organization.name);
+				const inviterName = escapeHtml(inviter.user.name || inviter.user.email);
+				await sendEmail({
+					to: [email],
+					subject: `${inviter.user.name || inviter.user.email} invited you to ${organization.name} on Vitalgate`,
+					html: `
+						<div style="font-family: -apple-system, sans-serif; max-width: 480px; color: #111;">
+							<h2 style="margin-bottom: 4px;">Join ${orgName} on Vitalgate</h2>
+							<p>${inviterName} invited you to the <strong>${orgName}</strong> workspace as ${escapeHtml(role)}.</p>
+							<p><a href="${link}">Accept the invitation →</a></p>
+							<p style="color: #666; font-size: 13px;">Sign in with the GitHub account that uses ${escapeHtml(email)}. The invitation expires in 48 hours. If you weren't expecting it, you can ignore this email.</p>
+						</div>
+					`,
+				});
+			},
 			schema: {
 				organization: {
 					additionalFields: {

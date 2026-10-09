@@ -2,6 +2,7 @@ import {
 	BellIcon,
 	CaretDownIcon,
 	ChartBarIcon,
+	CheckIcon,
 	FolderSimpleIcon,
 	GearIcon,
 	GitPullRequestIcon,
@@ -11,9 +12,16 @@ import {
 	UsersIcon,
 	XIcon,
 } from "@phosphor-icons/react";
-import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Dialog } from "radix-ui";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+	Link,
+	useNavigate,
+	useRouter,
+	useRouterState,
+} from "@tanstack/react-router";
+import { Dialog, DropdownMenu } from "radix-ui";
 import { type ComponentType, type ReactNode, useState } from "react";
+import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
 import { HeaderSearch } from "./header-search";
 import { Logo } from "./logo";
@@ -72,22 +80,83 @@ function NavList({
 	);
 }
 
+/**
+ * Lists every workspace the user belongs to (their own, plus any joined via
+ * an invitation) and switches the session's active one. Every server query
+ * reads activeOrganizationId off the session, so after switching, all cached
+ * queries and route loaders are refetched.
+ */
 function WorkspaceSwitcher() {
 	const { data: activeOrg, isPending } = authClient.useActiveOrganization();
+	const { data: orgs } = authClient.useListOrganizations();
+	const queryClient = useQueryClient();
+	const router = useRouter();
+	const [switching, setSwitching] = useState(false);
 	const name = isPending ? "" : (activeOrg?.name ?? "No workspace");
 	const initial = name ? name.charAt(0).toUpperCase() : "?";
 
+	const switchTo = async (organizationId: string) => {
+		if (organizationId === activeOrg?.id) return;
+		setSwitching(true);
+		const { error } = await authClient.organization.setActive({
+			organizationId,
+		});
+		if (error) {
+			toast.error(error.message ?? "Could not switch workspace");
+		} else {
+			await queryClient.invalidateQueries();
+			await router.invalidate();
+		}
+		setSwitching(false);
+	};
+
 	return (
-		<button
-			type="button"
-			className="flex w-full items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-		>
-			<span className="grid size-5 shrink-0 place-items-center rounded-sm bg-primary/15 text-[10px] font-semibold text-primary">
-				{initial}
-			</span>
-			<span className="truncate">{isPending ? "Loading…" : name}</span>
-			<CaretDownIcon className="ml-auto size-3.5 shrink-0" weight="bold" />
-		</button>
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger asChild>
+				<button
+					type="button"
+					disabled={switching}
+					className="flex w-full items-center gap-2 rounded-md border border-border bg-background/60 px-2 py-1.5 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-60"
+				>
+					<span className="grid size-5 shrink-0 place-items-center rounded-sm bg-primary/15 text-[10px] font-semibold text-primary">
+						{initial}
+					</span>
+					<span className="truncate">
+						{isPending ? "Loading…" : switching ? "Switching…" : name}
+					</span>
+					<CaretDownIcon className="ml-auto size-3.5 shrink-0" weight="bold" />
+				</button>
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Portal>
+				<DropdownMenu.Content
+					align="start"
+					sideOffset={4}
+					className="z-50 min-w-(--radix-dropdown-menu-trigger-width) rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-md"
+				>
+					<DropdownMenu.Label className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
+						Workspaces
+					</DropdownMenu.Label>
+					{(orgs ?? []).map((org) => (
+						<DropdownMenu.Item
+							key={org.id}
+							onSelect={() => switchTo(org.id)}
+							className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+						>
+							<span className="grid size-5 shrink-0 place-items-center rounded-sm bg-primary/15 text-[10px] font-semibold text-primary">
+								{org.name.charAt(0).toUpperCase()}
+							</span>
+							<span className="truncate">{org.name}</span>
+							{org.id === activeOrg?.id && (
+								<CheckIcon
+									className="ml-auto size-3.5 shrink-0"
+									weight="bold"
+								/>
+							)}
+						</DropdownMenu.Item>
+					))}
+				</DropdownMenu.Content>
+			</DropdownMenu.Portal>
+		</DropdownMenu.Root>
 	);
 }
 

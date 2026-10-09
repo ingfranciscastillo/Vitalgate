@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { sendEmail } from "@/lib/email.server";
+import { escapeHtml } from "@/lib/html";
 
 interface ContactInput {
 	name: string;
@@ -8,14 +9,6 @@ interface ContactInput {
 }
 
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-function escapeHtml(value: string): string {
-	return value
-		.replace(/&/g, "&amp;")
-		.replace(/</g, "&lt;")
-		.replace(/>/g, "&gt;")
-		.replace(/"/g, "&quot;");
-}
 
 /**
  * Relays the public contact form to whoever should read it — there's no

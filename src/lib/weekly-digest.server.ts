@@ -10,6 +10,7 @@ import {
 	user,
 } from "@/db/schema";
 import { sendEmail } from "@/lib/email.server";
+import { escapeHtml } from "@/lib/html";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 
@@ -76,7 +77,7 @@ function renderDigestEmail(
 	return `
 		<div style="font-family: -apple-system, sans-serif; max-width: 480px; color: #111;">
 			<h2 style="margin-bottom: 4px;">Vitalgate weekly digest</h2>
-			<p style="color: #666; margin-top: 0;">${orgName} — last 7 days</p>
+			<p style="color: #666; margin-top: 0;">${escapeHtml(orgName)} — last 7 days</p>
 			<ul style="line-height: 1.8;">
 				<li><strong>${stats.prsAnalyzed}</strong> pull request${stats.prsAnalyzed === 1 ? "" : "s"} analyzed</li>
 				<li><strong>${stats.failingPrs}</strong> failed a required budget</li>

@@ -17,13 +17,30 @@ import { linkUnderline } from "@/lib/link-hover";
 import { EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
+/**
+ * Where to go after signing in, e.g. /accept-invitation/abc when an
+ * invitation link sent a signed-out visitor here. Only same-site paths are
+ * accepted — "//evil.com" or "https://..." would make this an open redirect.
+ */
+function safeRedirect(value: unknown): string | undefined {
+	return typeof value === "string" &&
+		value.startsWith("/") &&
+		!value.startsWith("//") &&
+		!value.startsWith("/\\")
+		? value
+		: undefined;
+}
+
 export const Route = createFileRoute("/login")({
-	// Signing in again while already signed in should just land on the
-	// dashboard, not show the sign-in screen a second time.
-	beforeLoad: async () => {
+	validateSearch: (search): { redirect?: string } => ({
+		redirect: safeRedirect(search.redirect),
+	}),
+	// Signing in again while already signed in should just land where the
+	// visitor was headed, not show the sign-in screen a second time.
+	beforeLoad: async ({ search }) => {
 		const session = await getSession();
 		if (session) {
-			throw redirect({ to: "/dashboard" });
+			throw redirect({ href: search.redirect ?? "/dashboard" });
 		}
 	},
 	head: () => ({
@@ -53,12 +70,13 @@ function Login() {
 	const reduce = useReducedMotion();
 	const item = staggerItem(reduce);
 	const [status, setStatus] = useState<"idle" | "loading" | "error">("idle");
+	const { redirect: redirectTo } = Route.useSearch();
 
 	const handleSignIn = async () => {
 		setStatus("loading");
 		const { error } = await authClient.signIn.social({
 			provider: "github",
-			callbackURL: "/dashboard",
+			callbackURL: redirectTo ?? "/dashboard",
 		});
 		if (error) setStatus("error");
 	};
