@@ -1,5 +1,6 @@
 import type { PackageManager } from "@/lib/github";
 import { WORKFLOW_MANAGED_MARKER } from "@/lib/github";
+import { PR_COMMENT_MARKER } from "@/lib/pr-comment";
 
 /**
  * Per-manager setup/install YAML block. Deliberately no hardcoded tool
@@ -136,6 +137,11 @@ env:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
+    # Only what the job needs: read the code, and comment the results on the
+    # pull request with the workflow's own GITHUB_TOKEN.
+    permissions:
+      contents: read
+      pull-requests: write
     # Bounds the whole job so a hung dev server (or anything else) fails loudly
     # instead of running until someone notices and cancels it by hand.
     timeout-minutes: 20
@@ -168,6 +174,7 @@ ${forwardedEnv}        run: |
           PR_TITLE: \${{ github.event.pull_request.title }}
           PR_AUTHOR: \${{ github.event.pull_request.user.login }}
           PR_BRANCH: \${{ github.event.pull_request.head.ref }}
+          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           node -e '
           const fs = require("fs");
@@ -182,29 +189,62 @@ ${forwardedEnv}        run: |
           };
           // Lighthouse (lab data) has no INP audit — INP is a field metric,
           // not something a single synthetic run produces. Left out on purpose.
-          fetch("${opts.vitalgateOrigin}/api/ingest", {
-            method: "POST",
-            headers: {
+
+          // Posts the results on the PR, or updates the previous Vitalgate
+          // comment so a PR has one comment instead of one per push. Never
+          // fails the job: PRs from forks get a read-only token and can not
+          // be commented on.
+          async function upsertComment(markdown) {
+            if (!markdown || !process.env.GITHUB_TOKEN) return;
+            const api = "https://api.github.com/repos/" + process.env.GITHUB_REPOSITORY + "/issues";
+            const headers = {
+              authorization: "Bearer " + process.env.GITHUB_TOKEN,
+              accept: "application/vnd.github+json",
               "content-type": "application/json",
-              authorization: "Bearer " + process.env.VITALGATE_TOKEN,
-            },
-            body: JSON.stringify({
-              githubRepoId: "${opts.githubRepoId}",
-              prNumber: Number(process.env.PR_NUMBER),
-              prTitle: process.env.PR_TITLE,
-              prAuthor: process.env.PR_AUTHOR,
-              branch: process.env.PR_BRANCH,
-              metrics,
-            }),
-          }).then(async (res) => {
+              "x-github-api-version": "2022-11-28",
+            };
+            try {
+              const list = await fetch(api + "/" + process.env.PR_NUMBER + "/comments?per_page=100", { headers }).then((r) => r.json());
+              const previous = Array.isArray(list)
+                ? list.find((c) => c.user && c.user.login === "github-actions[bot]" && c.body && c.body.includes("${PR_COMMENT_MARKER}"))
+                : undefined;
+              const res = previous
+                ? await fetch(api + "/comments/" + previous.id, { method: "PATCH", headers, body: JSON.stringify({ body: markdown }) })
+                : await fetch(api + "/" + process.env.PR_NUMBER + "/comments", { method: "POST", headers, body: JSON.stringify({ body: markdown }) });
+              if (!res.ok) console.log("Vitalgate: could not comment on the PR (HTTP " + res.status + ").");
+            } catch (err) {
+              console.log("Vitalgate: could not comment on the PR: " + err.message);
+            }
+          }
+
+          (async () => {
+            const res = await fetch("${opts.vitalgateOrigin}/api/ingest", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                authorization: "Bearer " + process.env.VITALGATE_TOKEN,
+              },
+              body: JSON.stringify({
+                githubRepoId: "${opts.githubRepoId}",
+                prNumber: Number(process.env.PR_NUMBER),
+                prTitle: process.env.PR_TITLE,
+                prAuthor: process.env.PR_AUTHOR,
+                branch: process.env.PR_BRANCH,
+                metrics,
+              }),
+            });
             const body = await res.json();
-            console.log(JSON.stringify(body, null, 2));
-            if (!res.ok) process.exit(1);
+            if (!res.ok) {
+              console.error(JSON.stringify(body, null, 2));
+              process.exit(1);
+            }
+            console.log(JSON.stringify({ status: body.status, violations: body.violations }, null, 2));
+            await upsertComment(body.comment);
             if (body.status === "failing") {
               console.error("Vitalgate: a required performance budget was violated.");
               process.exit(1);
             }
-          });
+          })();
           '
 
 # Setup checklist:

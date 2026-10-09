@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -11,12 +11,14 @@ import {
 } from "@/db/schema";
 import { deliverAlerts } from "@/lib/alert-delivery.server";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
+import { getAppUrl } from "@/lib/app-url.server";
 import type {
 	AlertRuleKey,
 	MetricKey,
 	PrStatus,
 	Severity,
 } from "@/lib/mock-data";
+import { renderPrComment } from "@/lib/pr-comment";
 import { verifyOrgToken } from "@/lib/verify-org-token.server";
 
 const metricsSchema = z
@@ -210,12 +212,18 @@ async function handleIngest(request: Request) {
 		? await getOrgMedianPerf(organizationId)
 		: null;
 
-	// Baseline for a brand-new PR row: the repo's most recent other run, or
-	// itself if this is the first run ever recorded (nothing to regress from).
+	// Baseline for a brand-new PR row: the repo's most recent run of another
+	// PR, or itself if this is the first run ever recorded (nothing to
+	// regress from).
 	const [lastRun] = await db
 		.select({ metrics: pullRequests.metrics })
 		.from(pullRequests)
-		.where(eq(pullRequests.repoId, repo.id))
+		.where(
+			and(
+				eq(pullRequests.repoId, repo.id),
+				ne(pullRequests.number, body.prNumber),
+			),
+		)
 		.orderBy(desc(pullRequests.openedAt))
 		.limit(1);
 	const baseline = lastRun?.metrics ?? body.metrics;
@@ -245,7 +253,7 @@ async function handleIngest(request: Request) {
 				metrics: body.metrics,
 			},
 		})
-		.returning({ id: pullRequests.id });
+		.returning({ id: pullRequests.id, baseline: pullRequests.baseline });
 
 	const newAlerts: NewAlert[] = [];
 
@@ -331,7 +339,18 @@ async function handleIngest(request: Request) {
 		}
 	}
 
-	return json({ status, violations });
+	// The workflow posts this on the pull request (see workflow-template.ts),
+	// so its wording can improve without regenerating every repo's workflow.
+	const comment = renderPrComment({
+		status,
+		metrics: body.metrics,
+		baseline: pull.baseline,
+		budgets: budgetRows,
+		reportUrl: `${getAppUrl()}/pulls/${pull.id}`,
+		isFirstRun: !lastRun,
+	});
+
+	return json({ status, violations, comment });
 }
 
 export const Route = createFileRoute("/api/ingest")({
