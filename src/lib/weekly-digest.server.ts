@@ -10,7 +10,7 @@ import {
 	user,
 } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
-import { sendEmail } from "@/lib/email.server";
+import { sendEmailToEach } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
@@ -99,7 +99,8 @@ export interface WeeklyDigestResult {
 }
 
 /**
- * Sends the weekly digest email to every org that has the rule enabled.
+ * Sends the weekly digest email to every Pro org that has the rule enabled,
+ * as a separate email to each member.
  * Called by /api/cron/weekly-digest. Doesn't write an `alerts` row — that
  * table is scoped to one repo per row (NOT NULL repoId), but a digest is
  * org-wide; the email itself is the notification here, the same way the
@@ -115,7 +116,13 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestResult[]> {
 		.from(alertRules)
 		.innerJoin(organization, eq(alertRules.organizationId, organization.id))
 		.where(
-			and(eq(alertRules.rule, "weekly_digest"), eq(alertRules.enabled, true)),
+			and(
+				eq(alertRules.rule, "weekly_digest"),
+				eq(alertRules.enabled, true),
+				// Pro-only rule: an org that was downgraded keeps its stored
+				// "enabled" row, but shouldn't keep getting the digest.
+				eq(organization.plan, "pro"),
+			),
 		);
 
 	const appUrl = getAppUrl();
@@ -142,7 +149,7 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestResult[]> {
 				continue;
 			}
 
-			await sendEmail({
+			await sendEmailToEach({
 				to: emails,
 				subject: `Vitalgate weekly digest — ${org.organizationName}`,
 				html: renderDigestEmail(org.organizationName, stats, appUrl),
