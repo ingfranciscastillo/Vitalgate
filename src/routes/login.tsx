@@ -122,7 +122,7 @@ function Login() {
 							className="mt-3 text-sm leading-relaxed text-muted-foreground"
 						>
 							Sign in with GitHub to keep performance budgets enforced on every
-							pull request. We only request the minimum scopes needed.
+							pull request.
 						</motion.p>
 
 						<motion.div variants={item}>
@@ -166,11 +166,11 @@ function Login() {
 						>
 							<li className="flex items-center gap-2">
 								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Read
-								access to PRs and commits
+								and write access to your repositories
 							</li>
 							<li className="flex items-center gap-2">
-								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Post
-								status checks and comments
+								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Used
+								only to add the Vitalgate workflow to repos you connect
 							</li>
 							<li className="flex items-center gap-2">
 								<CheckCircleIcon className="h-3.5 w-3.5 text-primary" /> Revoke
@@ -183,20 +183,20 @@ function Login() {
 							className="mt-10 text-xs text-muted-foreground"
 						>
 							By continuing you agree to our{" "}
-							<a href="#terms" className={linkUnderline}>
-								Terms
-							</a>{" "}
+							<Link to="/terms" className={linkUnderline}>
+								Terms of Service
+							</Link>{" "}
 							and{" "}
-							<a href="#privacy" className={linkUnderline}>
+							<Link to="/privacy-policy" className={linkUnderline}>
 								Privacy Policy
-							</a>
+							</Link>
 							.
 						</motion.div>
 					</motion.div>
 				</div>
 
 				<div className="font-mono text-xs text-muted-foreground">
-					© {new Date().getFullYear()} Vitalgate Labs
+					© {new Date().getFullYear()} Vitalgate
 				</div>
 			</section>
 		</div>

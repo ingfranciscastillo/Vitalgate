@@ -108,13 +108,19 @@ export function MarketingShell({ children }: { children: ReactNode }) {
 								>
 									Privacy
 								</Link>
+								<Link
+									to="/terms"
+									className={`${linkUnderline} text-foreground/80`}
+								>
+									Terms
+								</Link>
 							</div>
 						</div>
 					</div>
 				</div>
 				<div className="border-t border-border">
 					<div className="mx-auto max-w-6xl px-5 py-4 font-mono text-xs text-muted-foreground">
-						© {new Date().getFullYear()} Vitalgate Labs
+						© {new Date().getFullYear()} Vitalgate
 					</div>
 				</div>
 			</footer>
