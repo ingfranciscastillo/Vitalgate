@@ -1,0 +1,1 @@
+ALTER TABLE "alerts" ADD COLUMN "delivered_to" text[] DEFAULT '{}'::text[] NOT NULL;

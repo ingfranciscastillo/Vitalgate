@@ -155,9 +155,11 @@ function PrivacyPolicy() {
 								<li>
 									<strong>To provide the Service</strong> — sign you in, connect
 									your repositories, check results against your budgets, show
-									your dashboard and alerts, and send the weekly digest email if
-									your workspace turns it on. This is necessary to perform our
-									agreement with you (the{" "}
+									your dashboard, and deliver alerts — by email to workspace
+									members who haven't turned them off, and to Slack or Discord
+									if connected — plus the weekly digest if your workspace turns
+									it on. This is necessary to perform our agreement with you
+									(the{" "}
 									<Link to="/terms" className="text-primary hover:underline">
 										Terms of Service
 									</Link>
@@ -199,8 +201,8 @@ function PrivacyPolicy() {
 									data above is stored.
 								</li>
 								<li>
-									<strong>Resend</strong> — sends the weekly digest email and
-									delivers contact form messages to us.
+									<strong>Resend</strong> — sends alert, invitation, and weekly
+									digest emails, and delivers contact form messages to us.
 								</li>
 								<li>
 									<strong>Slack / Discord</strong> — only if you connect them,

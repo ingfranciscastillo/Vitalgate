@@ -1,4 +1,4 @@
-import { relations } from "drizzle-orm";
+import { relations, sql } from "drizzle-orm";
 import {
 	boolean,
 	doublePrecision,
@@ -134,7 +134,16 @@ export const alerts = pgTable("alerts", {
 	repoId: text("repo_id")
 		.notNull()
 		.references(() => repos.id, { onDelete: "cascade" }),
-	channel: text("channel").notNull().$type<AlertChannel>(),
+	/**
+	 * Channels this alert actually reached (an email to at least one member,
+	 * a Slack/Discord post). Empty when nothing was delivered — e.g. every
+	 * member opted out and no integration is connected.
+	 */
+	deliveredTo: text("delivered_to")
+		.array()
+		.notNull()
+		.default(sql`'{}'::text[]`)
+		.$type<AlertChannel[]>(),
 	level: text("level").notNull().$type<AlertLevel>(),
 	title: text("title").notNull(),
 	message: text("message").notNull(),

@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { and, desc, eq, gte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import {
@@ -9,6 +9,7 @@ import {
 	pullRequests,
 	repos,
 } from "@/db/schema";
+import { deliverAlerts } from "@/lib/alert-delivery.server";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import type {
 	AlertRuleKey,
@@ -29,12 +30,14 @@ const metricsSchema = z
 	})
 	.strict();
 
+// Bounded to GitHub's own limits: these strings end up in alert emails and
+// Slack/Discord posts, so a CI token holder can't push arbitrarily large ones.
 const ingestBodySchema = z.object({
-	githubRepoId: z.string().min(1),
+	githubRepoId: z.string().regex(/^\d{1,20}$/),
 	prNumber: z.number().int().positive(),
-	prTitle: z.string().min(1),
-	prAuthor: z.string().min(1),
-	branch: z.string().min(1),
+	prTitle: z.string().min(1).max(256),
+	prAuthor: z.string().min(1).max(39),
+	branch: z.string().min(1).max(255),
 	metrics: metricsSchema,
 });
 
@@ -141,7 +144,7 @@ async function handleIngest(request: Request) {
 	const body = parsed.data;
 
 	const [repo] = await db
-		.select({ id: repos.id })
+		.select({ id: repos.id, fullName: repos.fullName })
 		.from(repos)
 		.where(
 			and(
@@ -217,7 +220,7 @@ async function handleIngest(request: Request) {
 		.limit(1);
 	const baseline = lastRun?.metrics ?? body.metrics;
 
-	await db
+	const [pull] = await db
 		.insert(pullRequests)
 		.values({
 			repoId: repo.id,
@@ -241,7 +244,8 @@ async function handleIngest(request: Request) {
 				status,
 				metrics: body.metrics,
 			},
-		});
+		})
+		.returning({ id: pullRequests.id });
 
 	const newAlerts: NewAlert[] = [];
 
@@ -256,9 +260,6 @@ async function handleIngest(request: Request) {
 				: `PR #${body.prNumber} exceeded ${failed.length} required budgets: ${failed.map((v) => v.metric).join(", ")}.`;
 		newAlerts.push({
 			repoId: repo.id,
-			// No channel integrations (Slack/Discord/email) are wired up yet —
-			// "email" is a placeholder until real delivery exists to pick from.
-			channel: "email",
 			level: "critical",
 			title: "Budget violation",
 			message,
@@ -276,7 +277,6 @@ async function handleIngest(request: Request) {
 		if (regressed.length > 0) {
 			newAlerts.push({
 				repoId: repo.id,
-				channel: "email",
 				level: "warning",
 				title: "3-day regression",
 				message: `PR #${body.prNumber}: ${regressed.join(", ")} worsened more than ${REGRESSION_THRESHOLD * 100}% vs this repo's 3-day average.`,
@@ -294,7 +294,6 @@ async function handleIngest(request: Request) {
 		) {
 			newAlerts.push({
 				repoId: repo.id,
-				channel: "email",
 				level: "critical",
 				title: "Score below 80",
 				message: `Workspace median performance score fell to ${Math.round(medianPerfAfter)} (was ${Math.round(medianPerfBefore)}).`,
@@ -303,7 +302,33 @@ async function handleIngest(request: Request) {
 	}
 
 	if (newAlerts.length > 0) {
-		await db.insert(alerts).values(newAlerts);
+		const inserted = await db
+			.insert(alerts)
+			.values(newAlerts)
+			.returning({ id: alerts.id });
+
+		// Awaited rather than fire-and-forget: on serverless the function can
+		// be frozen as soon as the response is sent. Bounded by per-webhook
+		// timeouts, and deliverAlerts never throws.
+		const deliveredTo = await deliverAlerts(newAlerts, {
+			organizationId,
+			repoFullName: repo.fullName,
+			prNumber: body.prNumber,
+			prTitle: body.prTitle,
+			prAuthor: body.prAuthor,
+			pullId: pull.id,
+		});
+		if (deliveredTo.length > 0) {
+			await db
+				.update(alerts)
+				.set({ deliveredTo })
+				.where(
+					inArray(
+						alerts.id,
+						inserted.map((a) => a.id),
+					),
+				);
+		}
 	}
 
 	return json({ status, violations });

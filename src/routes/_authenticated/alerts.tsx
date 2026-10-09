@@ -1,7 +1,7 @@
 import {
-	DiscordLogoIcon,
-	EnvelopeSimpleIcon,
-	SlackLogoIcon,
+	InfoIcon,
+	WarningIcon,
+	WarningOctagonIcon,
 } from "@phosphor-icons/react";
 import {
 	useMutation,
@@ -20,15 +20,15 @@ import { setAlertRuleEnabled } from "@/lib/alert-rules.functions";
 import { alertRulesQueryOptions } from "@/lib/alert-rules.queries";
 import { orgAlertsQueryOptions } from "@/lib/alerts.queries";
 import { authClient } from "@/lib/auth-client";
-import { timeAgo } from "@/lib/format";
+import { formatDelivery, timeAgo } from "@/lib/format";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { isPro, PRO_ONLY_ALERT_RULES } from "@/lib/plan";
 
-const channelIcon = {
-	slack: SlackLogoIcon,
-	discord: DiscordLogoIcon,
-	email: EnvelopeSimpleIcon,
+const levelIcon = {
+	critical: WarningOctagonIcon,
+	warning: WarningIcon,
+	info: InfoIcon,
 } as const;
 
 export const Route = createFileRoute("/_authenticated/alerts")({
@@ -78,7 +78,7 @@ function Alerts() {
 							>
 								<AnimatePresence mode="popLayout">
 									{alerts.map((a) => {
-										const Icon = channelIcon[a.channel];
+										const Icon = levelIcon[a.level];
 										return (
 											<motion.li
 												key={a.id}
@@ -110,7 +110,7 @@ function Alerts() {
 														{a.message}
 													</p>
 													<div className="mt-1 font-mono text-[10px] text-muted-foreground">
-														{a.repoFullName} · {a.channel} ·{" "}
+														{a.repoFullName} · {formatDelivery(a.deliveredTo)} ·{" "}
 														{timeAgo(a.createdAt)}
 													</div>
 												</div>

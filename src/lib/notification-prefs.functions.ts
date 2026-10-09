@@ -15,11 +15,11 @@ interface NotificationPrefMeta {
 }
 
 /**
- * None of these actually send email yet — this only persists what the user
- * asked for, so real delivery (real-time sends on critical/warning alerts, a
- * daily digest job) can read it later without another round of "the toggle
- * doesn't do anything." Global per user, not scoped to the active org: these
- * read as personal preferences ("email me"), not an org policy.
+ * critical_alerts and warning_alerts are honored by alert delivery
+ * (alert-delivery.server.ts, which mirrors their defaultEnabled). The two
+ * digest preferences are stored but not read by anything yet. Global per
+ * user, not scoped to the active org: these read as personal preferences
+ * ("email me"), not an org policy.
  */
 const NOTIFICATION_PREFS: NotificationPrefMeta[] = [
 	{

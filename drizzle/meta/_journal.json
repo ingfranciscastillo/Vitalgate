@@ -71,6 +71,20 @@
       "when": 1791575068021,
       "tag": "0009_useful_madelyne_pryor",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791577453183,
+      "tag": "0010_spooky_vengeance",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791577460897,
+      "tag": "0011_gifted_riptide",
+      "breakpoints": true
     }
   ]
 }

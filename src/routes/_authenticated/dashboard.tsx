@@ -23,7 +23,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
 import { orgAlertsQueryOptions } from "@/lib/alerts.queries";
 import { dashboardOverviewQueryOptions } from "@/lib/dashboard.queries";
-import { timeAgo } from "@/lib/format";
+import { formatDelivery, timeAgo } from "@/lib/format";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
 import { orgPullsQueryOptions } from "@/lib/pulls.queries";
 import { orgReposQueryOptions } from "@/lib/repos.queries";
@@ -237,7 +237,7 @@ function Dashboard() {
 													{a.message}
 												</div>
 												<div className="mt-0.5 font-mono text-[10px] text-muted-foreground truncate">
-													{a.repoFullName} · {a.channel} ·{" "}
+													{a.repoFullName} · {formatDelivery(a.deliveredTo)} ·{" "}
 													{timeAgo(a.createdAt)}
 												</div>
 											</div>

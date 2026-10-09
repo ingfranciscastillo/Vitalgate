@@ -1,7 +1,7 @@
 import {
-	DiscordLogoIcon,
-	EnvelopeSimpleIcon,
-	SlackLogoIcon,
+	InfoIcon,
+	WarningIcon,
+	WarningOctagonIcon,
 } from "@phosphor-icons/react";
 import {
 	useMutation,
@@ -32,7 +32,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { timeAgo } from "@/lib/format";
+import { formatDelivery, timeAgo } from "@/lib/format";
 import {
 	disconnectRepository,
 	updateRepoEnvVars,
@@ -42,10 +42,10 @@ import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { repoDetailQueryOptions } from "@/lib/repo-detail.queries";
 
-const channelIcon = {
-	slack: SlackLogoIcon,
-	discord: DiscordLogoIcon,
-	email: EnvelopeSimpleIcon,
+const levelIcon = {
+	critical: WarningOctagonIcon,
+	warning: WarningIcon,
+	info: InfoIcon,
 } as const;
 
 export const Route = createFileRoute("/_authenticated/repositories/$repoId")({
@@ -431,7 +431,7 @@ function RepoDetail() {
 								animate="show"
 							>
 								{repo.alerts.map((a) => {
-									const Icon = channelIcon[a.channel];
+									const Icon = levelIcon[a.level];
 									return (
 										<motion.li
 											key={a.id}
@@ -456,7 +456,8 @@ function RepoDetail() {
 													{a.message}
 												</p>
 												<div className="mt-1 font-mono text-[10px] text-muted-foreground">
-													{a.channel} · {timeAgo(a.createdAt)}
+													{formatDelivery(a.deliveredTo)} ·{" "}
+													{timeAgo(a.createdAt)}
 												</div>
 											</div>
 										</motion.li>

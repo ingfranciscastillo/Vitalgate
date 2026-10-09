@@ -9,7 +9,8 @@ export interface OrgAlertItem {
 	id: string;
 	repoId: string;
 	repoFullName: string;
-	channel: AlertChannel;
+	/** Channels the alert actually reached; empty if none. */
+	deliveredTo: AlertChannel[];
 	level: AlertLevel;
 	title: string;
 	message: string;
@@ -17,10 +18,9 @@ export interface OrgAlertItem {
 }
 
 /**
- * Most recent alerts across every repo in the active org. Nothing generates
- * these yet except /api/ingest inserting one per failing (hard budget
- * violation) run — this is a feed of what actually happened, not a
- * notification inbox with read/unread state.
+ * Most recent alerts across every repo in the active org, as /api/ingest
+ * recorded them, with where each one was delivered — a feed of what
+ * actually happened, not a notification inbox with read/unread state.
  */
 export const getOrgAlerts = createServerFn({ method: "GET" }).handler(
 	async (): Promise<OrgAlertItem[]> => {
@@ -33,7 +33,7 @@ export const getOrgAlerts = createServerFn({ method: "GET" }).handler(
 				id: alerts.id,
 				repoId: alerts.repoId,
 				repoFullName: repos.fullName,
-				channel: alerts.channel,
+				deliveredTo: alerts.deliveredTo,
 				level: alerts.level,
 				title: alerts.title,
 				message: alerts.message,

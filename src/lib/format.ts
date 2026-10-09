@@ -7,3 +7,14 @@ export function timeAgo(iso: string | Date | null): string {
 	const days = Math.floor(hours / 24);
 	return `${days}d ago`;
 }
+
+const CHANNEL_LABEL = { email: "Email", slack: "Slack", discord: "Discord" };
+
+/** "Email, Slack" — or "Not delivered" when an alert reached no channel. */
+export function formatDelivery(
+	deliveredTo: readonly (keyof typeof CHANNEL_LABEL)[],
+): string {
+	return deliveredTo.length === 0
+		? "Not delivered"
+		: deliveredTo.map((c) => CHANNEL_LABEL[c]).join(", ");
+}

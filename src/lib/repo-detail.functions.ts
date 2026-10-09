@@ -37,7 +37,8 @@ export interface RepoDetailSeriesPoint {
 
 export interface RepoDetailAlert {
 	id: string;
-	channel: AlertChannel;
+	/** Channels the alert actually reached; empty if none. */
+	deliveredTo: AlertChannel[];
 	level: AlertLevel;
 	title: string;
 	message: string;
@@ -131,7 +132,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 				db
 					.select({
 						id: alerts.id,
-						channel: alerts.channel,
+						deliveredTo: alerts.deliveredTo,
 						level: alerts.level,
 						title: alerts.title,
 						message: alerts.message,

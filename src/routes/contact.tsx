@@ -155,7 +155,7 @@ function Contact() {
 								{(field) => (
 									<div
 										aria-hidden="true"
-										className="pointer-events-none absolute -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
+										className="pointer-events-none absolute left-[-9999px] top-0 h-px w-px overflow-hidden opacity-0"
 									>
 										<label htmlFor="contact-website">
 											Leave this field empty
