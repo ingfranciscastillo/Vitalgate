@@ -26,6 +26,7 @@ import {
 	YAxis,
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
+import { BudgetsEditor } from "@/components/budgets-editor";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -37,7 +38,6 @@ import {
 	disconnectRepository,
 	updateRepoEnvVars,
 } from "@/lib/github.functions";
-import { formatMetric, METRIC_META } from "@/lib/mock-data";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { repoDetailQueryOptions } from "@/lib/repo-detail.queries";
@@ -354,65 +354,12 @@ function RepoDetail() {
 				</TabsContent>
 
 				<TabsContent value="budgets" className="mt-6">
-					<Card className="p-0 overflow-hidden">
-						{repo.budgets.length === 0 ? (
-							<p className="px-5 py-10 text-center text-sm text-muted-foreground">
-								No budgets configured. Reconnect with a preset or add budgets
-								manually.
-							</p>
-						) : (
-							<div className="overflow-x-auto">
-								<table className="w-full text-sm">
-									<thead className="bg-muted/50 text-xs uppercase tracking-wider text-muted-foreground">
-										<tr>
-											<th className="text-left font-medium px-5 py-3">
-												Metric
-											</th>
-											<th className="text-left font-medium px-5 py-3">Limit</th>
-											<th className="text-left font-medium px-5 py-3">
-												Severity
-											</th>
-											<th className="text-left font-medium px-5 py-3">
-												Action
-											</th>
-										</tr>
-									</thead>
-									<motion.tbody
-										className="divide-y divide-border"
-										variants={staggerContainer}
-										initial="hidden"
-										animate="show"
-									>
-										{repo.budgets.map((b) => (
-											<motion.tr key={b.metric} variants={staggerItem(reduce)}>
-												<td className="px-5 py-3">
-													<span className="font-mono font-medium">
-														{b.metric}
-													</span>{" "}
-													<span className="text-xs text-muted-foreground ml-2">
-														{METRIC_META[b.metric].label}
-													</span>
-												</td>
-												<td className="px-5 py-3 font-mono">
-													{formatMetric(b.metric, b.max)}
-												</td>
-												<td className="px-5 py-3">
-													<span
-														className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${b.severity === "fail" ? "bg-destructive/15 text-destructive" : "bg-warning/20 text-warning-foreground"}`}
-													>
-														{b.severity}
-													</span>
-												</td>
-												<td className="px-5 py-3 font-mono text-xs text-muted-foreground">
-													{b.action}
-												</td>
-											</motion.tr>
-										))}
-									</motion.tbody>
-								</table>
-							</div>
-						)}
-					</Card>
+					<BudgetsEditor
+						key={repo.id}
+						repoId={repo.id}
+						budgets={repo.budgets}
+						canEdit={isAdmin === true}
+					/>
 				</TabsContent>
 
 				<TabsContent value="history" className="mt-6">

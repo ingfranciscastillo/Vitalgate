@@ -72,12 +72,12 @@ type PresetBudget = {
  * Budget preset values, kept server-side as the source of truth (the client
  * only sends the preset id). Mirrors the thresholds shown in the preset
  * descriptions in repositories/new.tsx; FCP/TBT aren't shown there but are
- * filled in proportionally so every connected repo gets all 6 metrics.
+ * filled in proportionally so every connected repo gets all 5 measurable
+ * metrics (no INP: Lighthouse lab runs can't measure it — see budgets.ts).
  */
 const PRESET_BUDGETS: Record<string, PresetBudget[]> = {
 	default: [
 		{ metric: "LCP", max: 2500, severity: "fail", action: "block" },
-		{ metric: "INP", max: 200, severity: "fail", action: "block" },
 		{ metric: "CLS", max: 0.1, severity: "warn", action: "comment" },
 		{ metric: "FCP", max: 1800, severity: "warn", action: "comment" },
 		{ metric: "TBT", max: 300, severity: "warn", action: "comment" },
@@ -85,7 +85,6 @@ const PRESET_BUDGETS: Record<string, PresetBudget[]> = {
 	],
 	strict: [
 		{ metric: "LCP", max: 2000, severity: "fail", action: "block" },
-		{ metric: "INP", max: 150, severity: "fail", action: "block" },
 		{ metric: "CLS", max: 0.05, severity: "warn", action: "comment" },
 		{ metric: "FCP", max: 1500, severity: "warn", action: "comment" },
 		{ metric: "TBT", max: 200, severity: "warn", action: "comment" },
@@ -93,7 +92,6 @@ const PRESET_BUDGETS: Record<string, PresetBudget[]> = {
 	],
 	relaxed: [
 		{ metric: "LCP", max: 3500, severity: "warn", action: "comment" },
-		{ metric: "INP", max: 300, severity: "warn", action: "comment" },
 		{ metric: "CLS", max: 0.15, severity: "warn", action: "comment" },
 		{ metric: "FCP", max: 2800, severity: "warn", action: "comment" },
 		{ metric: "TBT", max: 500, severity: "warn", action: "comment" },

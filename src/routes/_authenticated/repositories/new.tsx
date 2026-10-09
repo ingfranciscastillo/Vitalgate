@@ -72,18 +72,18 @@ const PRESETS: {
 	{
 		id: "default",
 		label: "Default (Core Web Vitals)",
-		desc: "LCP 2.5s · INP 200ms · CLS 0.1 · Score ≥ 90",
+		desc: "LCP 2.5s · TBT 300ms · CLS 0.1 · Score ≥ 90",
 		recommended: true,
 	},
 	{
 		id: "strict",
 		label: "Strict",
-		desc: "LCP 2.0s · INP 150ms · CLS 0.05 · Score ≥ 95",
+		desc: "LCP 2.0s · TBT 200ms · CLS 0.05 · Score ≥ 95",
 	},
 	{
 		id: "relaxed",
 		label: "Relaxed",
-		desc: "LCP 3.5s · INP 300ms · CLS 0.15 · Score ≥ 75",
+		desc: "LCP 3.5s · TBT 500ms · CLS 0.15 · Score ≥ 75",
 	},
 	{
 		id: "custom",
