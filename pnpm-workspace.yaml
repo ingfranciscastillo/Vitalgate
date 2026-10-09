@@ -5,4 +5,3 @@ blockExoticSubdeps: true
 allowBuilds:
   esbuild: true
   lightningcss: true
-  better-sqlite3: true

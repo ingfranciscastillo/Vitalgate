@@ -27,7 +27,6 @@
     "@phosphor-icons/react": "^2.1.10",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-devtools": "latest",
-    "@tanstack/react-form": "latest",
     "@tanstack/react-query": "latest",
     "@tanstack/react-query-devtools": "latest",
     "@tanstack/react-router": "latest",
@@ -43,7 +42,6 @@
     "lucide-react": "^1.53.0",
     "motion": "^14.0.0",
     "nitro": "3.0.260903-beta",
-    "pg": "^8.23.1",
     "radix-ui": "^1.7.0",
     "react": "^19.3.0",
     "react-dom": "^19.3.0",
@@ -57,17 +55,13 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
-    "@inlang/paraglide-js": "^2.26.0",
-    "@tailwindcss/typography": "^0.5.20",
     "@tanstack/devtools-vite": "latest",
     "@tanstack/router-cli": "^1.167.40",
     "@types/node": "^26.6.4",
-    "@types/pg": "^8.23.1",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
     "dotenv": "^18.0.6",
-    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vite": "^8.3.4"
   }

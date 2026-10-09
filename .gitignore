@@ -12,3 +12,8 @@ dist-ssr
 .vinxi
 __unconfig*
 todos.json
+
+# AI agent skills (local tooling, not part of the app)
+.agents
+.claude
+skills-lock.json
