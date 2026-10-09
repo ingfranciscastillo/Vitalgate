@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { db } from "@/db";
 import { alertRules } from "@/db/schema";
 import {
@@ -7,10 +8,10 @@ import {
 	getOrgAlertRules,
 } from "@/lib/alert-rules.server";
 import { ensureSession } from "@/lib/auth.functions";
-import type { AlertRuleKey } from "@/lib/mock-data";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { isPro, PRO_ONLY_ALERT_RULES } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
+import { alertRuleKeySchema, parseInput } from "@/lib/validation";
 
 export type { AlertRuleItem };
 
@@ -27,7 +28,9 @@ export const getAlertRules = createServerFn({ method: "GET" }).handler(
 );
 
 export const setAlertRuleEnabled = createServerFn({ method: "POST" })
-	.validator((data: { rule: AlertRuleKey; enabled: boolean }) => data)
+	.validator(
+		parseInput(z.object({ rule: alertRuleKeySchema, enabled: z.boolean() })),
+	)
 	.handler(async ({ data }) => {
 		const { organizationId } = await requireOrgAdmin();
 

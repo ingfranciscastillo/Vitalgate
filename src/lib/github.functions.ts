@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
 import { account, budgets, repos } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
@@ -20,6 +21,12 @@ import type { Action, MetricKey, Severity } from "@/lib/mock-data";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
+import {
+	connectRepositoriesSchema,
+	envVarNamesSchema,
+	idSchema,
+	parseInput,
+} from "@/lib/validation";
 import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
 
 /**
@@ -95,31 +102,6 @@ const PRESET_BUDGETS: Record<string, PresetBudget[]> = {
 	// "Configure budgets manually after connecting" — no rows written.
 	custom: [],
 };
-
-interface ConnectRepositoriesInput {
-	repos: Pick<
-		GhRepo,
-		"id" | "name" | "fullName" | "defaultBranch" | "private"
-	>[];
-	preset: string;
-	/** When false, downgrade every "block" action to "comment" (no merge gating). */
-	branchProtect: boolean;
-	/**
-	 * User-provided override for the workflow's serve command/port, applied to
-	 * every repo in this batch. When omitted, each repo's package.json is
-	 * inspected instead (see pickServeScript) — falls back to a placeholder
-	 * the user must edit by hand if nothing can be detected.
-	 */
-	startScript?: string;
-	port?: number;
-	/**
-	 * Names (never values) of repo secrets the generated workflow should
-	 * forward to the started server — e.g. ["DATABASE_URL"] for a repo whose
-	 * SSR loader errors on every request without a DB connection string.
-	 * Applied to every repo in this batch, same as startScript/port.
-	 */
-	envVarNames?: string[];
-}
 
 const DEFAULT_PORT = 3000;
 const FALLBACK_START_SCRIPT = "start"; // TODO: replace me — no start/preview/serve script was found
@@ -215,7 +197,7 @@ async function regenerateWorkflow(
 }
 
 export const connectRepositories = createServerFn({ method: "POST" })
-	.validator((data: ConnectRepositoriesInput) => data)
+	.validator(parseInput(connectRepositoriesSchema))
 	.handler(async ({ data }) => {
 		const { session, organizationId } = await requireOrgAdmin();
 
@@ -326,14 +308,11 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		return { connected, workflowsAdded, workflowsUpdated, workflowErrors };
 	});
 
-interface UpdateRepoEnvVarsInput {
-	repoId: string;
-	envVarNames: string[];
-}
-
 /** Edits one already-connected repo's forwarded env var names and recommits its workflow — the Settings tab on a repo's detail page. */
 export const updateRepoEnvVars = createServerFn({ method: "POST" })
-	.validator((data: UpdateRepoEnvVarsInput) => data)
+	.validator(
+		parseInput(z.object({ repoId: idSchema, envVarNames: envVarNamesSchema })),
+	)
 	.handler(async ({ data }) => {
 		const { session, organizationId } = await requireOrgAdmin();
 
@@ -378,7 +357,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
  * budgets back" feature, disconnecting is meant to be a clean break.
  */
 export const disconnectRepository = createServerFn({ method: "POST" })
-	.validator((repoId: string) => repoId)
+	.validator(parseInput(idSchema))
 	.handler(async ({ data: repoId }) => {
 		const { session, organizationId } = await requireOrgAdmin();
 

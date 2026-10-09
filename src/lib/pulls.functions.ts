@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { budgets, pullRequests, repos } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
 import type { Action, MetricKey, PrStatus, Severity } from "@/lib/mock-data";
+import { idSchema, parseInput } from "@/lib/validation";
 
 type MetricSnapshot = Partial<Record<MetricKey, number>>;
 
@@ -82,7 +83,7 @@ export interface PullDetail {
  * guess from another org's PR must not leak data, same as getRepoDetail).
  */
 export const getPullDetail = createServerFn({ method: "GET" })
-	.validator((prId: string) => prId)
+	.validator(parseInput(idSchema))
 	.handler(async ({ data: prId }): Promise<PullDetail | null> => {
 		const session = await ensureSession();
 		const organizationId = session.session.activeOrganizationId;

@@ -3,6 +3,7 @@ import { z } from "zod";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 import { consumeRateLimit, getClientIp } from "@/lib/rate-limit.server";
+import { parseInput } from "@/lib/validation";
 
 /** Also mirrored as maxLength on the form fields in routes/contact.tsx. */
 export const CONTACT_LIMITS = { name: 100, email: 254, message: 5000 };
@@ -29,8 +30,6 @@ const contactSchema = z.object({
 	website: z.string().max(200).optional(),
 });
 
-type ContactInput = z.input<typeof contactSchema>;
-
 /**
  * Relays the public contact form to CONTACT_EMAIL through Resend. It's an
  * unauthenticated endpoint that sends email, so it's rate limited per IP and
@@ -38,13 +37,7 @@ type ContactInput = z.input<typeof contactSchema>;
  * Resend quota that invitations and digests depend on.
  */
 export const sendContactMessage = createServerFn({ method: "POST" })
-	.validator((input: ContactInput) => {
-		const result = contactSchema.safeParse(input);
-		if (!result.success) {
-			throw new Error(result.error.issues[0]?.message ?? "Invalid message.");
-		}
-		return result.data;
-	})
+	.validator(parseInput(contactSchema))
 	.handler(async ({ data }) => {
 		// Pretend it worked so the bot has no signal to adapt to.
 		if (data.website) return;

@@ -61,7 +61,14 @@ export const Route = createFileRoute("/_authenticated/repositories/new")({
 	component: ConnectRepo,
 });
 
-const PRESETS = [
+type PresetId = "default" | "strict" | "relaxed" | "custom";
+
+const PRESETS: {
+	id: PresetId;
+	label: string;
+	desc: string;
+	recommended?: boolean;
+}[] = [
 	{
 		id: "default",
 		label: "Default (Core Web Vitals)",
@@ -93,7 +100,7 @@ function ConnectRepo() {
 	const [query, setQuery] = useState("");
 	const [org, setOrg] = useState<string>("all");
 	const [selected, setSelected] = useState<string[]>([]);
-	const [preset, setPreset] = useState("default");
+	const [preset, setPreset] = useState<PresetId>("default");
 	const [branchProtect, setBranchProtect] = useState(true);
 	const [postComments, setPostComments] = useState(true);
 	const [startScript, setStartScript] = useState("");

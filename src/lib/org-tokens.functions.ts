@@ -5,6 +5,7 @@ import { db } from "@/db";
 import { orgTokens } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
 import { requireOrgAdmin } from "@/lib/org-access.server";
+import { idSchema, parseInput } from "@/lib/validation";
 
 function generateRawToken() {
 	return `vgate_${randomBytes(24).toString("hex")}`;
@@ -50,7 +51,7 @@ export const listOrgTokens = createServerFn({ method: "GET" }).handler(
 );
 
 export const revokeOrgToken = createServerFn({ method: "POST" })
-	.validator((tokenId: string) => tokenId)
+	.validator(parseInput(idSchema))
 	.handler(async ({ data: tokenId }) => {
 		const { organizationId } = await requireOrgAdmin();
 

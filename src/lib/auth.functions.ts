@@ -1,6 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeaders } from "@tanstack/react-start/server";
+import { z } from "zod";
 import { auth } from "@/lib/auth";
+import { parseInput } from "@/lib/validation";
 
 export const getSession = createServerFn({ method: "GET" }).handler(
 	async () => {
@@ -35,7 +37,7 @@ export const ensureSession = createServerFn({ method: "GET" }).handler(
  * works directly and doesn't need this.
  */
 export const setInitialPassword = createServerFn({ method: "POST" })
-	.validator((data: { newPassword: string }) => data)
+	.validator(parseInput(z.object({ newPassword: z.string().min(8).max(128) })))
 	.handler(async ({ data }) => {
 		const headers = getRequestHeaders();
 		try {

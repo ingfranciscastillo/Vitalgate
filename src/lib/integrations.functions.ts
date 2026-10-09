@@ -9,11 +9,11 @@ import {
 	getDiscordAuthorizeUrl,
 	getSlackAuthorizeUrl,
 } from "@/lib/integrations.server";
-import type { IntegrationProvider } from "@/lib/mock-data";
 import { signOAuthState } from "@/lib/oauth-state.server";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { isPro, type Plan } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
+import { integrationProviderSchema, parseInput } from "@/lib/validation";
 
 export interface IntegrationsOverview {
 	github: { connected: boolean; repoCount: number };
@@ -86,7 +86,7 @@ export const getIntegrationsOverview = createServerFn({
 
 /** URL to redirect the browser to, to start the Slack/Discord OAuth flow for the active org. */
 export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
-	.validator((provider: IntegrationProvider) => provider)
+	.validator(parseInput(integrationProviderSchema))
 	.handler(async ({ data: provider }): Promise<string> => {
 		const { organizationId } = await requireOrgAdmin();
 
@@ -104,7 +104,7 @@ export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
 	});
 
 export const disconnectIntegration = createServerFn({ method: "POST" })
-	.validator((provider: IntegrationProvider) => provider)
+	.validator(parseInput(integrationProviderSchema))
 	.handler(async ({ data: provider }) => {
 		const { organizationId } = await requireOrgAdmin();
 

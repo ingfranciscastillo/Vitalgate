@@ -11,6 +11,7 @@ import type {
 	PrStatus,
 	Severity,
 } from "@/lib/mock-data";
+import { idSchema, parseInput } from "@/lib/validation";
 
 export interface RepoDetailBudget {
 	metric: MetricKey;
@@ -57,7 +58,7 @@ export interface RepoDetail {
 }
 
 export const getRepoDetail = createServerFn({ method: "GET" })
-	.validator((repoId: string) => repoId)
+	.validator(parseInput(idSchema))
 	.handler(async ({ data: repoId }): Promise<RepoDetail | null> => {
 		const session = await ensureSession();
 		const organizationId = session.session.activeOrganizationId;

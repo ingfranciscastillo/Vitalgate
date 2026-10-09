@@ -1,9 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
 import { notificationPrefs } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
 import type { NotificationPrefKey } from "@/lib/mock-data";
+import { notificationPrefKeySchema, parseInput } from "@/lib/validation";
 
 interface NotificationPrefMeta {
 	key: NotificationPrefKey;
@@ -72,7 +74,11 @@ export const getNotificationPrefs = createServerFn({ method: "GET" }).handler(
 );
 
 export const setNotificationPref = createServerFn({ method: "POST" })
-	.validator((data: { pref: NotificationPrefKey; enabled: boolean }) => data)
+	.validator(
+		parseInput(
+			z.object({ pref: notificationPrefKeySchema, enabled: z.boolean() }),
+		),
+	)
 	.handler(async ({ data }) => {
 		const session = await ensureSession();
 
