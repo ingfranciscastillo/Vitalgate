@@ -67,6 +67,35 @@ export async function listGithubRepos(accessToken: string): Promise<GhRepo[]> {
 	return repos;
 }
 
+/**
+ * Lists the repos a GitHub App installation token was granted — exactly the
+ * ones the installing account picked. Same 300-repo cap as listGithubRepos.
+ */
+export async function listInstallationRepos(
+	installationToken: string,
+): Promise<GhRepo[]> {
+	const repos: GhRepo[] = [];
+	for (let page = 1; page <= 3; page++) {
+		const res = await fetch(
+			`https://api.github.com/installation/repositories?per_page=100&page=${page}`,
+			{
+				headers: {
+					Authorization: `Bearer ${installationToken}`,
+					Accept: "application/vnd.github+json",
+					"X-GitHub-Api-Version": "2022-11-28",
+				},
+			},
+		);
+		if (!res.ok) {
+			throw new Error(`GitHub API error: ${res.status} ${await res.text()}`);
+		}
+		const body = (await res.json()) as { repositories: GithubApiRepo[] };
+		repos.push(...body.repositories.map(mapRepo));
+		if (body.repositories.length < 100) break;
+	}
+	return repos;
+}
+
 /** The subset of package.json fields the workflow generator cares about. */
 export interface PackageJsonInfo {
 	scripts: Record<string, string>;
@@ -213,13 +242,19 @@ export type CommitWorkflowResult =
  * marker there'd be no way to support disconnect+reconnect picking up a
  * template change without also risking clobbering a hand-written file.
  *
- * Renaming this string (as happened moving off the old "Budgetly" name) means
- * any repo whose committed file still carries the old marker reads as
- * "foreign" on the next reconnect and gets left alone instead of updated —
- * delete that repo's existing workflow file by hand once, after which
- * reconnecting regenerates it under the new marker normally.
+ * Files generated before a rename carry an older marker (see
+ * LEGACY_WORKFLOW_MARKERS) and are still treated as ours.
  */
 export const WORKFLOW_MANAGED_MARKER = "# Managed by Vitalgate.";
+
+/** Markers from before the Budgetly → Vitalgate rename — still ours, safe to regenerate. */
+const LEGACY_WORKFLOW_MARKERS = ["# Managed by Budgetly."];
+
+function isManagedWorkflow(content: string): boolean {
+	return [WORKFLOW_MANAGED_MARKER, ...LEGACY_WORKFLOW_MARKERS].some((marker) =>
+		content.startsWith(marker),
+	);
+}
 
 /**
  * Commits the Vitalgate GitHub Action workflow to a repo, at
@@ -227,8 +262,10 @@ export const WORKFLOW_MANAGED_MARKER = "# Managed by Vitalgate.";
  * product's own name (kept from before the Budgetly → Vitalgate rename): a
  * changed path would leave the old file behind uncleaned, and GitHub runs
  * every workflow file it finds, so a stale one would silently keep firing
- * alongside the new one. Uses the user's own OAuth token (this shows up as a
- * real commit authored by them). If a file already exists at that path:
+ * alongside the new one. The commit is authored by whoever the token belongs
+ * to: the GitHub App with an installation token, or the user with their
+ * OAuth token (repos connected before the app). If a file already exists at
+ * that path:
  * overwrites it when it's one Vitalgate generated before (carries
  * WORKFLOW_MANAGED_MARKER — this is how disconnecting and reconnecting a repo
  * picks up template changes), otherwise leaves it alone so a user's own
@@ -259,7 +296,7 @@ export async function commitWorkflowFile(
 			file.encoding === "base64"
 				? Buffer.from(file.content, "base64").toString("utf8")
 				: "";
-		if (!existingContent.startsWith(WORKFLOW_MANAGED_MARKER)) {
+		if (!isManagedWorkflow(existingContent)) {
 			return { status: "already-exists" };
 		}
 		existingSha = file.sha;

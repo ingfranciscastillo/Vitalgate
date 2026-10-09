@@ -55,6 +55,12 @@ export const repos = pgTable(
 		 * store; the workflow only ever references `secrets.<NAME>`.
 		 */
 		envVarNames: jsonb("env_var_names").notNull().$type<string[]>().default([]),
+		/**
+		 * The GitHub App installation that grants access to this repo, used for
+		 * every GitHub call about it. Null for repos connected before the app
+		 * existed, which still go through the connecting user's OAuth token.
+		 */
+		installationId: text("installation_id"),
 		/** Whether /api/ingest hands the workflow a results comment to post on the PR. */
 		postPrComments: boolean("post_pr_comments").notNull().default(true),
 		createdAt: timestamp("created_at").defaultNow().notNull(),

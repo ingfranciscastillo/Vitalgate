@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
-import { account, budgets, repos } from "@/db/schema";
+import { account, budgets, githubInstallations, repos } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { auth } from "@/lib/auth";
 import { ensureSession } from "@/lib/auth.functions";
@@ -16,8 +16,10 @@ import {
 	getPackageJson,
 	isYarnBerryLockfile,
 	listGithubRepos,
+	listInstallationRepos,
 	pickServeScript,
 } from "@/lib/github";
+import { getInstallationToken } from "@/lib/github-app.server";
 import type { Action, MetricKey, Severity } from "@/lib/mock-data";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
@@ -54,11 +56,50 @@ async function getGithubAccessToken(userId: string): Promise<string> {
 	return accessToken;
 }
 
+/**
+ * Every repo the workspace's GitHub App installations can access, keyed by
+ * GitHub repo id, with the installation that grants it. Null when the
+ * workspace hasn't installed the app yet — callers then fall back to the
+ * user's OAuth token, until login stops requesting repo access.
+ */
+async function getInstallationRepos(
+	organizationId: string,
+): Promise<Map<string, { repo: GhRepo; installationId: string }> | null> {
+	const installations = await db
+		.select({ installationId: githubInstallations.installationId })
+		.from(githubInstallations)
+		.where(eq(githubInstallations.organizationId, organizationId));
+	if (installations.length === 0) return null;
+
+	const byRepoId = new Map<string, { repo: GhRepo; installationId: string }>();
+	for (const { installationId } of installations) {
+		const token = await getInstallationToken(installationId);
+		for (const repo of await listInstallationRepos(token)) {
+			byRepoId.set(repo.id, { repo, installationId });
+		}
+	}
+	return byRepoId;
+}
+
+/** Token for GitHub calls about one connected repo: its app installation's, or the user's OAuth token for repos connected before the app. */
+async function getRepoToken(
+	repo: { installationId: string | null },
+	userId: string,
+): Promise<string> {
+	return repo.installationId
+		? getInstallationToken(repo.installationId)
+		: getGithubAccessToken(userId);
+}
+
 export const getConnectableRepos = createServerFn({ method: "GET" }).handler(
 	async (): Promise<GhRepo[]> => {
 		const session = await ensureSession();
-		const accessToken = await getGithubAccessToken(session.user.id);
-		return listGithubRepos(accessToken);
+		const organizationId = session.session.activeOrganizationId;
+		const appRepos = organizationId
+			? await getInstallationRepos(organizationId)
+			: null;
+		if (appRepos) return [...appRepos.values()].map((r) => r.repo);
+		return listGithubRepos(await getGithubAccessToken(session.user.id));
 	},
 );
 
@@ -217,7 +258,10 @@ export const connectRepositories = createServerFn({ method: "POST" })
 			}
 		}
 
-		const accessToken = await getGithubAccessToken(session.user.id);
+		const appRepos = await getInstallationRepos(organizationId);
+		const oauthToken = appRepos
+			? null
+			: await getGithubAccessToken(session.user.id);
 		// Fixed public origin, not this request's Origin header: connecting from
 		// a preview deployment must not bake a temporary URL into the user's repo.
 		const vitalgateOrigin = getAppUrl();
@@ -228,7 +272,22 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		let workflowsUpdated = 0;
 		const workflowErrors: string[] = [];
 
-		for (const repo of data.repos) {
+		for (const requested of data.repos) {
+			// With the app installed, only repos it was granted can connect, and
+			// their details come from GitHub rather than from the browser.
+			const appRepo = appRepos?.get(requested.id);
+			if (appRepos && !appRepo) {
+				workflowErrors.push(
+					`${requested.fullName}: the Vitalgate GitHub App isn't installed on this repository`,
+				);
+				continue;
+			}
+			const repo = appRepo?.repo ?? requested;
+			const installationId = appRepo?.installationId ?? null;
+			const accessToken = installationId
+				? await getInstallationToken(installationId)
+				: (oauthToken as string);
+
 			const [inserted] = await db
 				.insert(repos)
 				.values({
@@ -240,6 +299,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					private: repo.private,
 					envVarNames,
 					postPrComments: data.postComments ?? true,
+					installationId,
 				})
 				.onConflictDoNothing({
 					target: [repos.organizationId, repos.githubRepoId],
@@ -271,7 +331,11 @@ export const connectRepositories = createServerFn({ method: "POST" })
 				// customized since.
 				const [existing] = await db
 					.update(repos)
-					.set({ envVarNames, postPrComments: data.postComments ?? true })
+					.set({
+						envVarNames,
+						postPrComments: data.postComments ?? true,
+						installationId,
+					})
 					.where(
 						and(
 							eq(repos.organizationId, organizationId),
@@ -301,6 +365,11 @@ export const connectRepositories = createServerFn({ method: "POST" })
 			if (workflowResult.status === "error") {
 				workflowErrors.push(`${repo.fullName}: ${workflowResult.message}`);
 			}
+			if (workflowResult.status === "already-exists") {
+				workflowErrors.push(
+					`${repo.fullName}: .github/workflows/budgetly.yml already exists and wasn't generated by Vitalgate, so it was left alone. Remove or rename it, then reconnect.`,
+				);
+			}
 		}
 
 		return { connected, workflowsAdded, workflowsUpdated, workflowErrors };
@@ -322,6 +391,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 				githubRepoId: repos.githubRepoId,
 				fullName: repos.fullName,
 				defaultBranch: repos.defaultBranch,
+				installationId: repos.installationId,
 			})
 			.from(repos)
 			.where(
@@ -336,7 +406,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 		const envVarNames = sanitizeEnvVarNames(data.envVarNames);
 		await db.update(repos).set({ envVarNames }).where(eq(repos.id, repo.id));
 
-		const accessToken = await getGithubAccessToken(session.user.id);
+		const accessToken = await getRepoToken(repo, session.user.id);
 		const workflowResult = await regenerateWorkflow(
 			accessToken,
 			repo,
@@ -364,9 +434,12 @@ export const disconnectRepository = createServerFn({ method: "POST" })
 			.where(
 				and(eq(repos.id, repoId), eq(repos.organizationId, organizationId)),
 			)
-			.returning({ fullName: repos.fullName });
+			.returning({
+				fullName: repos.fullName,
+				installationId: repos.installationId,
+			});
 		if (!repo) throw new Error("Repository not found");
 
-		const accessToken = await getGithubAccessToken(session.user.id);
+		const accessToken = await getRepoToken(repo, session.user.id);
 		await deleteWorkflowFile(accessToken, repo.fullName);
 	});
