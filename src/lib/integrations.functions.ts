@@ -11,6 +11,7 @@ import {
 } from "@/lib/integrations.server";
 import type { IntegrationProvider } from "@/lib/mock-data";
 import { signOAuthState } from "@/lib/oauth-state.server";
+import { requireOrgAdmin } from "@/lib/org-access.server";
 import { isPro, type Plan } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 
@@ -87,9 +88,7 @@ export const getIntegrationsOverview = createServerFn({
 export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
 	.validator((provider: IntegrationProvider) => provider)
 	.handler(async ({ data: provider }): Promise<string> => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { organizationId } = await requireOrgAdmin();
 
 		const plan = await getOrgPlan(organizationId);
 		if (!isPro(plan)) {
@@ -107,9 +106,7 @@ export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
 export const disconnectIntegration = createServerFn({ method: "POST" })
 	.validator((provider: IntegrationProvider) => provider)
 	.handler(async ({ data: provider }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { organizationId } = await requireOrgAdmin();
 
 		await deleteIntegration(organizationId, provider);
 	});

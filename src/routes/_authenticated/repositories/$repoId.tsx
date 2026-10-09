@@ -39,6 +39,7 @@ import {
 } from "@/lib/github.functions";
 import { formatMetric, METRIC_META } from "@/lib/mock-data";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 import { repoDetailQueryOptions } from "@/lib/repo-detail.queries";
 
 const channelIcon = {
@@ -78,6 +79,7 @@ function RepoDetail() {
 
 	const [envVarNames, setEnvVarNames] = useState(repo.envVarNames.join(", "));
 	const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
+	const isAdmin = useIsOrgAdmin();
 	const reduce = useReducedMotion();
 
 	const saveEnvVars = useMutation({
@@ -466,105 +468,115 @@ function RepoDetail() {
 				</TabsContent>
 
 				<TabsContent value="settings" className="mt-6 space-y-4">
-					<Card className="p-5">
-						<h2 className="font-semibold text-sm">Environment variables</h2>
-						<p className="mt-1 text-xs text-muted-foreground">
-							Comma-separated names of repo secrets the started server needs to
-							boot — not their values. Each becomes a{" "}
-							<code className="font-mono">secrets.NAME</code> reference in the
-							committed workflow, so the secret must already exist in this
-							repo's own GitHub settings.
-						</p>
-						<div className="mt-4 space-y-1.5">
-							<Label htmlFor="env-var-names" className="text-sm">
-								Secret names
-							</Label>
-							<Input
-								id="env-var-names"
-								placeholder="DATABASE_URL, GROQ_API_KEY"
-								value={envVarNames}
-								onChange={(e) => setEnvVarNames(e.target.value)}
-								className="font-mono text-xs"
-							/>
-						</div>
-						<Button
-							className="mt-4"
-							size="sm"
-							disabled={saveEnvVars.isPending}
-							onClick={() =>
-								saveEnvVars.mutate({
-									data: {
-										repoId,
-										envVarNames: envVarNames
-											.split(",")
-											.map((n) => n.trim())
-											.filter(Boolean),
-									},
-								})
-							}
-						>
-							{saveEnvVars.isPending ? "Saving…" : "Save"}
-						</Button>
-					</Card>
+					{isAdmin === false ? (
+						<Card className="p-5">
+							<p className="text-sm text-muted-foreground">
+								Only workspace owners and admins can change repository settings.
+							</p>
+						</Card>
+					) : (
+						<>
+							<Card className="p-5">
+								<h2 className="font-semibold text-sm">Environment variables</h2>
+								<p className="mt-1 text-xs text-muted-foreground">
+									Comma-separated names of repo secrets the started server needs
+									to boot — not their values. Each becomes a{" "}
+									<code className="font-mono">secrets.NAME</code> reference in
+									the committed workflow, so the secret must already exist in
+									this repo's own GitHub settings.
+								</p>
+								<div className="mt-4 space-y-1.5">
+									<Label htmlFor="env-var-names" className="text-sm">
+										Secret names
+									</Label>
+									<Input
+										id="env-var-names"
+										placeholder="DATABASE_URL, GROQ_API_KEY"
+										value={envVarNames}
+										onChange={(e) => setEnvVarNames(e.target.value)}
+										className="font-mono text-xs"
+									/>
+								</div>
+								<Button
+									className="mt-4"
+									size="sm"
+									disabled={saveEnvVars.isPending}
+									onClick={() =>
+										saveEnvVars.mutate({
+											data: {
+												repoId,
+												envVarNames: envVarNames
+													.split(",")
+													.map((n) => n.trim())
+													.filter(Boolean),
+											},
+										})
+									}
+								>
+									{saveEnvVars.isPending ? "Saving…" : "Save"}
+								</Button>
+							</Card>
 
-					<Card className="p-5 border-destructive/30">
-						<h2 className="font-semibold text-sm">Danger zone</h2>
-						<p className="mt-1 text-xs text-muted-foreground">
-							Disconnecting removes {repo.fullName} from Vitalgate, deleting its
-							budgets, PR history, and alerts. This can't be undone. The
-							committed workflow file is removed from the repo on a best-effort
-							basis.
-						</p>
-						<AnimatePresence mode="wait" initial={false}>
-							{confirmingDisconnect ? (
-								<motion.div
-									key="confirm"
-									initial={{ opacity: 0, y: -4 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -4 }}
-									transition={{ duration: 0.15, ease: EASE_OUT }}
-									className="mt-4 flex items-center gap-3"
-								>
-									<span className="text-sm font-medium">Are you sure?</span>
-									<Button
-										variant="destructive"
-										size="sm"
-										disabled={disconnect.isPending}
-										onClick={() => disconnect.mutate({ data: repoId })}
-									>
-										{disconnect.isPending
-											? "Disconnecting…"
-											: "Yes, disconnect"}
-									</Button>
-									<Button
-										variant="ghost"
-										size="sm"
-										disabled={disconnect.isPending}
-										onClick={() => setConfirmingDisconnect(false)}
-									>
-										Cancel
-									</Button>
-								</motion.div>
-							) : (
-								<motion.div
-									key="trigger"
-									initial={{ opacity: 0 }}
-									animate={{ opacity: 1 }}
-									exit={{ opacity: 0 }}
-									transition={{ duration: 0.15, ease: EASE_IN }}
-								>
-									<Button
-										className="mt-4"
-										variant="destructive"
-										size="sm"
-										onClick={() => setConfirmingDisconnect(true)}
-									>
-										Disconnect repository
-									</Button>
-								</motion.div>
-							)}
-						</AnimatePresence>
-					</Card>
+							<Card className="p-5 border-destructive/30">
+								<h2 className="font-semibold text-sm">Danger zone</h2>
+								<p className="mt-1 text-xs text-muted-foreground">
+									Disconnecting removes {repo.fullName} from Vitalgate, deleting
+									its budgets, PR history, and alerts. This can't be undone. The
+									committed workflow file is removed from the repo on a
+									best-effort basis.
+								</p>
+								<AnimatePresence mode="wait" initial={false}>
+									{confirmingDisconnect ? (
+										<motion.div
+											key="confirm"
+											initial={{ opacity: 0, y: -4 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -4 }}
+											transition={{ duration: 0.15, ease: EASE_OUT }}
+											className="mt-4 flex items-center gap-3"
+										>
+											<span className="text-sm font-medium">Are you sure?</span>
+											<Button
+												variant="destructive"
+												size="sm"
+												disabled={disconnect.isPending}
+												onClick={() => disconnect.mutate({ data: repoId })}
+											>
+												{disconnect.isPending
+													? "Disconnecting…"
+													: "Yes, disconnect"}
+											</Button>
+											<Button
+												variant="ghost"
+												size="sm"
+												disabled={disconnect.isPending}
+												onClick={() => setConfirmingDisconnect(false)}
+											>
+												Cancel
+											</Button>
+										</motion.div>
+									) : (
+										<motion.div
+											key="trigger"
+											initial={{ opacity: 0 }}
+											animate={{ opacity: 1 }}
+											exit={{ opacity: 0 }}
+											transition={{ duration: 0.15, ease: EASE_IN }}
+										>
+											<Button
+												className="mt-4"
+												variant="destructive"
+												size="sm"
+												onClick={() => setConfirmingDisconnect(true)}
+											>
+												Disconnect repository
+											</Button>
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</Card>
+						</>
+					)}
 				</TabsContent>
 			</Tabs>
 		</AppShell>

@@ -17,6 +17,7 @@ import {
 	pickServeScript,
 } from "@/lib/github";
 import type { Action, MetricKey, Severity } from "@/lib/mock-data";
+import { requireOrgAdmin } from "@/lib/org-access.server";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
@@ -237,13 +238,7 @@ async function regenerateWorkflow(
 export const connectRepositories = createServerFn({ method: "POST" })
 	.validator((data: ConnectRepositoriesInput) => data)
 	.handler(async ({ data }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) {
-			throw new Error(
-				"No active organization. Set one from Settings before connecting repos.",
-			);
-		}
+		const { session, organizationId } = await requireOrgAdmin();
 
 		const plan = await getOrgPlan(organizationId);
 		if (!isPro(plan)) {
@@ -359,9 +354,7 @@ interface UpdateRepoEnvVarsInput {
 export const updateRepoEnvVars = createServerFn({ method: "POST" })
 	.validator((data: UpdateRepoEnvVarsInput) => data)
 	.handler(async ({ data }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { session, organizationId } = await requireOrgAdmin();
 
 		// Scoped to the active org, not just the id — a UUID guess from
 		// another org's repo must not be editable.
@@ -406,9 +399,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 export const disconnectRepository = createServerFn({ method: "POST" })
 	.validator((repoId: string) => repoId)
 	.handler(async ({ data: repoId }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { session, organizationId } = await requireOrgAdmin();
 
 		const [repo] = await db
 			.delete(repos)

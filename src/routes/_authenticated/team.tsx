@@ -10,6 +10,7 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 
 export const Route = createFileRoute("/_authenticated/team")({
 	head: () => ({ meta: [{ title: "Team: Vitalgate" }] }),
@@ -44,6 +45,7 @@ function Team() {
 	const [inviting, setInviting] = useState(false);
 	const [busyId, setBusyId] = useState<string | null>(null);
 	const [shakeInvite, setShakeInvite] = useState(false);
+	const isAdmin = useIsOrgAdmin();
 	const reduce = useReducedMotion();
 
 	const members = org?.members ?? [];
@@ -155,7 +157,7 @@ function Team() {
 											>
 												{m.role}
 											</span>
-											{m.role !== "owner" && (
+											{isAdmin && m.role !== "owner" && (
 												<Button
 													type="button"
 													size="icon-sm"
@@ -205,17 +207,19 @@ function Team() {
 												>
 													{inv.role}
 												</span>
-												<Button
-													type="button"
-													size="icon-sm"
-													variant="ghost"
-													className="group"
-													aria-label={`Cancel invitation to ${inv.email}`}
-													disabled={busyId === inv.id}
-													onClick={() => handleCancelInvite(inv.id)}
-												>
-													<XIcon className="h-3.5 w-3.5 text-destructive transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-90" />
-												</Button>
+												{isAdmin && (
+													<Button
+														type="button"
+														size="icon-sm"
+														variant="ghost"
+														className="group"
+														aria-label={`Cancel invitation to ${inv.email}`}
+														disabled={busyId === inv.id}
+														onClick={() => handleCancelInvite(inv.id)}
+													>
+														<XIcon className="h-3.5 w-3.5 text-destructive transition-transform duration-150 ease-out group-hover:scale-110 group-active:scale-90" />
+													</Button>
+												)}
 											</motion.li>
 										))}
 									</AnimatePresence>
@@ -232,37 +236,41 @@ function Team() {
 					>
 						<h2 className="font-semibold">Invite teammates</h2>
 						<p className="text-xs text-muted-foreground mt-1">
-							Send an invite link by email.
+							{isAdmin === false
+								? "Only workspace owners and admins can invite teammates."
+								: "Send an invite link by email."}
 						</p>
-						<div className="mt-4 space-y-3">
-							<Input
-								type="email"
-								placeholder="email@company.com"
-								value={email}
-								onChange={(e) => setEmail(e.target.value)}
-							/>
-							<select
-								value={role}
-								onChange={(e) =>
-									setRole(e.target.value as (typeof INVITE_ROLES)[number])
-								}
-								className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm capitalize"
-							>
-								{INVITE_ROLES.map((r) => (
-									<option key={r} value={r}>
-										{r}
-									</option>
-								))}
-							</select>
-							<Button
-								className="w-full"
-								disabled={inviting}
-								onClick={handleInvite}
-							>
-								<PlusIcon className="h-4 w-4 mr-1.5" />
-								{inviting ? "Sending…" : "Send invite"}
-							</Button>
-						</div>
+						{isAdmin !== false && (
+							<div className="mt-4 space-y-3">
+								<Input
+									type="email"
+									placeholder="email@company.com"
+									value={email}
+									onChange={(e) => setEmail(e.target.value)}
+								/>
+								<select
+									value={role}
+									onChange={(e) =>
+										setRole(e.target.value as (typeof INVITE_ROLES)[number])
+									}
+									className="w-full h-9 rounded-md border border-input bg-background px-3 text-sm capitalize"
+								>
+									{INVITE_ROLES.map((r) => (
+										<option key={r} value={r}>
+											{r}
+										</option>
+									))}
+								</select>
+								<Button
+									className="w-full"
+									disabled={inviting}
+									onClick={handleInvite}
+								>
+									<PlusIcon className="h-4 w-4 mr-1.5" />
+									{inviting ? "Sending…" : "Send invite"}
+								</Button>
+							</div>
+						)}
 						<div className="mt-6">
 							<div className="text-xs uppercase tracking-wider text-muted-foreground mb-2">
 								Roles
@@ -273,11 +281,12 @@ function Team() {
 									be removed
 								</li>
 								<li>
-									<b className="text-foreground">Admin</b> · manage members and
-									settings
+									<b className="text-foreground">Admin</b> · manage members,
+									repositories, tokens, integrations, and alert rules
 								</li>
 								<li>
-									<b className="text-foreground">Member</b> · standard access
+									<b className="text-foreground">Member</b> · view dashboards,
+									repositories, pull requests, and alerts
 								</li>
 							</ul>
 						</div>

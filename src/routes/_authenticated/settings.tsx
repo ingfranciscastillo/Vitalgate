@@ -33,6 +33,7 @@ import type { IntegrationProvider } from "@/lib/mock-data";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { setNotificationPref } from "@/lib/notification-prefs.functions";
 import { notificationPrefsQueryOptions } from "@/lib/notification-prefs.queries";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
 import { orgReposQueryOptions } from "@/lib/repos.queries";
 import { parseUserAgent } from "@/lib/user-agent";
@@ -239,13 +240,16 @@ function IntegrationsTab() {
 		window.history.replaceState({}, "", window.location.pathname);
 	}, [queryClient]);
 
+	const isAdmin = useIsOrgAdmin();
+
 	const disconnect = useMutation({
 		mutationFn: disconnectIntegration,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
 			toast.success("Disconnected");
 		},
-		onError: () => toast.error("Could not disconnect"),
+		onError: (err) =>
+			toast.error(err instanceof Error ? err.message : "Could not disconnect"),
 	});
 
 	const connect = async (provider: IntegrationProvider) => {
@@ -266,132 +270,140 @@ function IntegrationsTab() {
 	}
 
 	return (
-		<motion.div
-			className="mt-6 grid sm:grid-cols-2 gap-4 max-w-3xl"
-			variants={staggerContainer}
-			initial="hidden"
-			animate="show"
-		>
-			<motion.div variants={staggerItem(reduce)}>
-				<IntegrationCardShell
-					icon={GithubLogoIcon}
-					name="GitHub"
-					connected={data.github.connected}
-					desc={
-						data.github.connected
-							? `${data.github.repoCount} repo${data.github.repoCount === 1 ? "" : "s"} connected`
-							: "Not connected"
-					}
-				>
-					<Link to="/repositories">
-						<Button variant="outline" size="sm">
-							Manage
-						</Button>
-					</Link>
-				</IntegrationCardShell>
-			</motion.div>
-
-			<motion.div variants={staggerItem(reduce)}>
-				<IntegrationCardShell
-					icon={SlackLogoIcon}
-					name="Slack"
-					connected={data.slack.connected}
-					proLocked={!isPro(data.plan)}
-					desc={
-						data.slack.connected
-							? (data.slack.label ?? "Connected")
-							: isPro(data.plan)
-								? "Not connected"
-								: "Upgrade to Pro to connect Slack"
-					}
-				>
-					{data.slack.connected ? (
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={disconnect.isPending}
-							onClick={() => disconnect.mutate({ data: "slack" })}
-						>
-							Disconnect
-						</Button>
-					) : isPro(data.plan) ? (
-						<Button
-							size="sm"
-							disabled={connecting === "slack"}
-							onClick={() => connect("slack")}
-						>
-							{connecting === "slack" ? "Connecting…" : "Connect"}
-						</Button>
-					) : (
-						<Link to="/pricing">
+		<>
+			{isAdmin === false && (
+				<p className="mt-6 text-xs text-muted-foreground">
+					Only workspace owners and admins can connect or disconnect
+					integrations.
+				</p>
+			)}
+			<motion.div
+				className="mt-6 grid sm:grid-cols-2 gap-4 max-w-3xl"
+				variants={staggerContainer}
+				initial="hidden"
+				animate="show"
+			>
+				<motion.div variants={staggerItem(reduce)}>
+					<IntegrationCardShell
+						icon={GithubLogoIcon}
+						name="GitHub"
+						connected={data.github.connected}
+						desc={
+							data.github.connected
+								? `${data.github.repoCount} repo${data.github.repoCount === 1 ? "" : "s"} connected`
+								: "Not connected"
+						}
+					>
+						<Link to="/repositories">
 							<Button variant="outline" size="sm">
-								Upgrade to Pro
+								Manage
 							</Button>
 						</Link>
-					)}
-				</IntegrationCardShell>
-			</motion.div>
+					</IntegrationCardShell>
+				</motion.div>
 
-			<motion.div variants={staggerItem(reduce)}>
-				<IntegrationCardShell
-					icon={DiscordLogoIcon}
-					name="Discord"
-					connected={data.discord.connected}
-					proLocked={!isPro(data.plan)}
-					desc={
-						data.discord.connected
-							? (data.discord.label ?? "Connected")
-							: isPro(data.plan)
-								? "Not connected"
-								: "Upgrade to Pro to connect Discord"
-					}
-				>
-					{data.discord.connected ? (
-						<Button
-							variant="outline"
-							size="sm"
-							disabled={disconnect.isPending}
-							onClick={() => disconnect.mutate({ data: "discord" })}
-						>
-							Disconnect
-						</Button>
-					) : isPro(data.plan) ? (
-						<Button
-							size="sm"
-							disabled={connecting === "discord"}
-							onClick={() => connect("discord")}
-						>
-							{connecting === "discord" ? "Connecting…" : "Connect"}
-						</Button>
-					) : (
-						<Link to="/pricing">
+				<motion.div variants={staggerItem(reduce)}>
+					<IntegrationCardShell
+						icon={SlackLogoIcon}
+						name="Slack"
+						connected={data.slack.connected}
+						proLocked={!isPro(data.plan)}
+						desc={
+							data.slack.connected
+								? (data.slack.label ?? "Connected")
+								: isPro(data.plan)
+									? "Not connected"
+									: "Upgrade to Pro to connect Slack"
+						}
+					>
+						{data.slack.connected ? (
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={disconnect.isPending || !isAdmin}
+								onClick={() => disconnect.mutate({ data: "slack" })}
+							>
+								Disconnect
+							</Button>
+						) : isPro(data.plan) ? (
+							<Button
+								size="sm"
+								disabled={connecting === "slack" || !isAdmin}
+								onClick={() => connect("slack")}
+							>
+								{connecting === "slack" ? "Connecting…" : "Connect"}
+							</Button>
+						) : (
+							<Link to="/pricing">
+								<Button variant="outline" size="sm">
+									Upgrade to Pro
+								</Button>
+							</Link>
+						)}
+					</IntegrationCardShell>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)}>
+					<IntegrationCardShell
+						icon={DiscordLogoIcon}
+						name="Discord"
+						connected={data.discord.connected}
+						proLocked={!isPro(data.plan)}
+						desc={
+							data.discord.connected
+								? (data.discord.label ?? "Connected")
+								: isPro(data.plan)
+									? "Not connected"
+									: "Upgrade to Pro to connect Discord"
+						}
+					>
+						{data.discord.connected ? (
+							<Button
+								variant="outline"
+								size="sm"
+								disabled={disconnect.isPending || !isAdmin}
+								onClick={() => disconnect.mutate({ data: "discord" })}
+							>
+								Disconnect
+							</Button>
+						) : isPro(data.plan) ? (
+							<Button
+								size="sm"
+								disabled={connecting === "discord" || !isAdmin}
+								onClick={() => connect("discord")}
+							>
+								{connecting === "discord" ? "Connecting…" : "Connect"}
+							</Button>
+						) : (
+							<Link to="/pricing">
+								<Button variant="outline" size="sm">
+									Upgrade to Pro
+								</Button>
+							</Link>
+						)}
+					</IntegrationCardShell>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)}>
+					<IntegrationCardShell
+						icon={EnvelopeSimpleIcon}
+						name="Email digest"
+						connected={data.emailDigest.enabled}
+						desc={
+							data.emailDigest.enabled
+								? "Weekly, to every org member"
+								: "Off — enable under Alert rules"
+						}
+					>
+						<Link to="/alerts">
 							<Button variant="outline" size="sm">
-								Upgrade to Pro
+								Manage
 							</Button>
 						</Link>
-					)}
-				</IntegrationCardShell>
+					</IntegrationCardShell>
+				</motion.div>
 			</motion.div>
-
-			<motion.div variants={staggerItem(reduce)}>
-				<IntegrationCardShell
-					icon={EnvelopeSimpleIcon}
-					name="Email digest"
-					connected={data.emailDigest.enabled}
-					desc={
-						data.emailDigest.enabled
-							? "Weekly, to every org member"
-							: "Off — enable under Alert rules"
-					}
-				>
-					<Link to="/alerts">
-						<Button variant="outline" size="sm">
-							Manage
-						</Button>
-					</Link>
-				</IntegrationCardShell>
-			</motion.div>
-		</motion.div>
+		</>
 	);
 }
 

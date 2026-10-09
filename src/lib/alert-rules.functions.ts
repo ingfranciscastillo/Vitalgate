@@ -8,6 +8,7 @@ import {
 } from "@/lib/alert-rules.server";
 import { ensureSession } from "@/lib/auth.functions";
 import type { AlertRuleKey } from "@/lib/mock-data";
+import { requireOrgAdmin } from "@/lib/org-access.server";
 import { isPro, PRO_ONLY_ALERT_RULES } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 
@@ -28,9 +29,7 @@ export const getAlertRules = createServerFn({ method: "GET" }).handler(
 export const setAlertRuleEnabled = createServerFn({ method: "POST" })
 	.validator((data: { rule: AlertRuleKey; enabled: boolean }) => data)
 	.handler(async ({ data }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { organizationId } = await requireOrgAdmin();
 
 		if (data.enabled && PRO_ONLY_ALERT_RULES.includes(data.rule)) {
 			const plan = await getOrgPlan(organizationId);

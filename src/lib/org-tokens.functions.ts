@@ -4,6 +4,7 @@ import { and, desc, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { orgTokens } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
+import { requireOrgAdmin } from "@/lib/org-access.server";
 
 function generateRawToken() {
 	return `vgate_${randomBytes(24).toString("hex")}`;
@@ -15,9 +16,7 @@ function hashToken(raw: string) {
 
 export const createOrgToken = createServerFn({ method: "POST" }).handler(
 	async () => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { organizationId } = await requireOrgAdmin();
 
 		const raw = generateRawToken();
 		await db.insert(orgTokens).values({
@@ -53,9 +52,7 @@ export const listOrgTokens = createServerFn({ method: "GET" }).handler(
 export const revokeOrgToken = createServerFn({ method: "POST" })
 	.validator((tokenId: string) => tokenId)
 	.handler(async ({ data: tokenId }) => {
-		const session = await ensureSession();
-		const organizationId = session.session.activeOrganizationId;
-		if (!organizationId) throw new Error("No active organization");
+		const { organizationId } = await requireOrgAdmin();
 
 		await db
 			.delete(orgTokens)

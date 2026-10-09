@@ -4,6 +4,7 @@ import { useState } from "react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 import { createOrgToken, revokeOrgToken } from "@/lib/org-tokens.functions";
 import { orgTokensQueryOptions } from "@/lib/org-tokens.queries";
 
@@ -11,6 +12,7 @@ export function CiTokenCard() {
 	const queryClient = useQueryClient();
 	const { data: tokens, isPending } = useQuery(orgTokensQueryOptions());
 	const [justCreated, setJustCreated] = useState<string | null>(null);
+	const isAdmin = useIsOrgAdmin();
 
 	const createMutation = useMutation({
 		mutationFn: createOrgToken,
@@ -83,27 +85,35 @@ export function CiTokenCard() {
 									: ", never used"}
 							</span>
 						</div>
-						<Button
-							type="button"
-							size="icon-sm"
-							variant="ghost"
-							onClick={() => revokeMutation.mutate({ data: t.id })}
-							aria-label="Revoke token"
-						>
-							<TrashIcon className="size-3.5 text-destructive" />
-						</Button>
+						{isAdmin && (
+							<Button
+								type="button"
+								size="icon-sm"
+								variant="ghost"
+								onClick={() => revokeMutation.mutate({ data: t.id })}
+								aria-label="Revoke token"
+							>
+								<TrashIcon className="size-3.5 text-destructive" />
+							</Button>
+						)}
 					</div>
 				))}
 			</div>
 
-			<Button
-				className="mt-4"
-				variant="outline"
-				onClick={() => createMutation.mutate({})}
-				disabled={createMutation.isPending}
-			>
-				Generate new token
-			</Button>
+			{isAdmin === false ? (
+				<p className="mt-4 text-xs text-muted-foreground">
+					Only workspace owners and admins can generate or revoke tokens.
+				</p>
+			) : (
+				<Button
+					className="mt-4"
+					variant="outline"
+					onClick={() => createMutation.mutate({})}
+					disabled={createMutation.isPending || !isAdmin}
+				>
+					Generate new token
+				</Button>
+			)}
 		</Card>
 	);
 }

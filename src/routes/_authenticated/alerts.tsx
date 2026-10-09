@@ -22,6 +22,7 @@ import { orgAlertsQueryOptions } from "@/lib/alerts.queries";
 import { authClient } from "@/lib/auth-client";
 import { timeAgo } from "@/lib/format";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 import { isPro, PRO_ONLY_ALERT_RULES } from "@/lib/plan";
 
 const channelIcon = {
@@ -47,6 +48,7 @@ function Alerts() {
 	const queryClient = useQueryClient();
 	const reduce = useReducedMotion();
 	const pro = isPro(org?.plan);
+	const isAdmin = useIsOrgAdmin();
 
 	const toggleRule = useMutation({
 		mutationFn: setAlertRuleEnabled,
@@ -127,6 +129,8 @@ function Alerts() {
 						<p className="mt-1 text-xs text-muted-foreground">
 							Budget violation is on every plan. Regression detection, score
 							thresholds, and the weekly digest are Pro features.
+							{isAdmin === false &&
+								" Only workspace owners and admins can change them."}
 						</p>
 						<motion.ul
 							className="mt-4 space-y-4"
@@ -164,7 +168,7 @@ function Alerts() {
 										) : (
 											<Switch
 												checked={r.enabled}
-												disabled={toggleRule.isPending}
+												disabled={toggleRule.isPending || !isAdmin}
 												onCheckedChange={(enabled) =>
 													toggleRule.mutate({
 														data: { rule: r.key, enabled: Boolean(enabled) },

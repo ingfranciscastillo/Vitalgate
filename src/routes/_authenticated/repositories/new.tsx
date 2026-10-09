@@ -39,6 +39,7 @@ import { authClient } from "@/lib/auth-client";
 import { connectRepositories } from "@/lib/github.functions";
 import { connectableReposQueryOptions } from "@/lib/github.queries";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
+import { useIsOrgAdmin } from "@/lib/org-roles";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
 import { orgReposQueryOptions } from "@/lib/repos.queries";
 
@@ -163,6 +164,8 @@ function ConnectRepo() {
 		},
 	});
 
+	const isAdmin = useIsOrgAdmin();
+
 	const onConnect = () => {
 		if (selected.length === 0) {
 			toast.error("Select at least one repository");
@@ -190,6 +193,19 @@ function ConnectRepo() {
 			},
 		});
 	};
+
+	if (isAdmin === false) {
+		return (
+			<AppShell title="Connect a repository">
+				<Card className="p-5 max-w-xl">
+					<p className="text-sm text-muted-foreground">
+						Only workspace owners and admins can connect repositories. Ask an
+						admin of this workspace to connect it, or to change your role.
+					</p>
+				</Card>
+			</AppShell>
+		);
+	}
 
 	return (
 		<AppShell title="Connect a repository">
