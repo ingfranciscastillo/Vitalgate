@@ -1,10 +1,11 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
 import { budgets, repos } from "@/db/schema";
 import { actionFor, updateBudgetsSchema } from "@/lib/budgets";
 import { requireOrgAdmin } from "@/lib/org-access.server";
-import { parseInput } from "@/lib/validation";
+import { idSchema, parseInput } from "@/lib/validation";
 
 /**
  * Replaces a repo's budgets with the given set — the Budgets tab on a repo's
@@ -47,4 +48,22 @@ export const updateRepoBudgets = createServerFn({ method: "POST" })
 				})),
 			),
 		]);
+	});
+
+/** Turns the results comment the workflow posts on each PR on or off for one repo. Owners and admins only. */
+export const setRepoPrComments = createServerFn({ method: "POST" })
+	.validator(parseInput(z.object({ repoId: idSchema, enabled: z.boolean() })))
+	.handler(async ({ data }) => {
+		const { organizationId } = await requireOrgAdmin();
+		const [updated] = await db
+			.update(repos)
+			.set({ postPrComments: data.enabled })
+			.where(
+				and(
+					eq(repos.id, data.repoId),
+					eq(repos.organizationId, organizationId),
+				),
+			)
+			.returning({ id: repos.id });
+		if (!updated) throw new Error("Repository not found");
 	});

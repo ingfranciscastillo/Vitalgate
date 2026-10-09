@@ -6,6 +6,7 @@ import { account, budgets, repos } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { auth } from "@/lib/auth";
 import { ensureSession } from "@/lib/auth.functions";
+import { actionFor } from "@/lib/budgets";
 import {
 	type CommitWorkflowResult,
 	commitWorkflowFile,
@@ -238,6 +239,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					defaultBranch: repo.defaultBranch,
 					private: repo.private,
 					envVarNames,
+					postPrComments: data.postComments ?? true,
 				})
 				.onConflictDoNothing({
 					target: [repos.organizationId, repos.githubRepoId],
@@ -253,12 +255,10 @@ export const connectRepositories = createServerFn({ method: "POST" })
 							repoId: inserted.id,
 							metric: b.metric,
 							max: b.max,
-							severity: b.severity,
-							action: (data.branchProtect
-								? b.action
-								: b.action === "block"
-									? "comment"
-									: b.action) as Action,
+							// Only severity decides whether a run fails the check, so
+							// "don't fail the check" means every budget is a warning.
+							severity: data.branchProtect ? b.severity : "warn",
+							action: actionFor(data.branchProtect ? b.severity : "warn"),
 						})),
 					);
 				}
@@ -271,7 +271,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 				// customized since.
 				const [existing] = await db
 					.update(repos)
-					.set({ envVarNames })
+					.set({ envVarNames, postPrComments: data.postComments ?? true })
 					.where(
 						and(
 							eq(repos.organizationId, organizationId),

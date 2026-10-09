@@ -191,6 +191,7 @@ function ConnectRepo() {
 				})),
 				preset,
 				branchProtect,
+				postComments,
 				startScript: startScript.trim() || undefined,
 				port: port.trim() ? Number(port) : undefined,
 				envVarNames: envVarNames
@@ -454,10 +455,11 @@ function ConnectRepo() {
 										/>
 										<div>
 											<Label htmlFor="bp" className="text-sm">
-												Block merges on fail
+												Fail the check on required budgets
 											</Label>
 											<p className="text-xs text-muted-foreground">
-												Required status check on the default branch.
+												Mark the Vitalgate check as required in GitHub to block
+												merges. Unchecked, every budget is a warning.
 											</p>
 										</div>
 									</div>

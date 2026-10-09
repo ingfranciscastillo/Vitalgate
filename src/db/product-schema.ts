@@ -55,6 +55,8 @@ export const repos = pgTable(
 		 * store; the workflow only ever references `secrets.<NAME>`.
 		 */
 		envVarNames: jsonb("env_var_names").notNull().$type<string[]>().default([]),
+		/** Whether /api/ingest hands the workflow a results comment to post on the PR. */
+		postPrComments: boolean("post_pr_comments").notNull().default(true),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [

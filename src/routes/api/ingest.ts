@@ -146,7 +146,11 @@ async function handleIngest(request: Request) {
 	const body = parsed.data;
 
 	const [repo] = await db
-		.select({ id: repos.id, fullName: repos.fullName })
+		.select({
+			id: repos.id,
+			fullName: repos.fullName,
+			postPrComments: repos.postPrComments,
+		})
 		.from(repos)
 		.where(
 			and(
@@ -341,14 +345,16 @@ async function handleIngest(request: Request) {
 
 	// The workflow posts this on the pull request (see workflow-template.ts),
 	// so its wording can improve without regenerating every repo's workflow.
-	const comment = renderPrComment({
-		status,
-		metrics: body.metrics,
-		baseline: pull.baseline,
-		budgets: budgetRows,
-		reportUrl: `${getAppUrl()}/pulls/${pull.id}`,
-		isFirstRun: !lastRun,
-	});
+	const comment = !repo.postPrComments
+		? null
+		: renderPrComment({
+				status,
+				metrics: body.metrics,
+				baseline: pull.baseline,
+				budgets: budgetRows,
+				reportUrl: `${getAppUrl()}/pulls/${pull.id}`,
+				isFirstRun: !lastRun,
+			});
 
 	return json({ status, violations, comment });
 }

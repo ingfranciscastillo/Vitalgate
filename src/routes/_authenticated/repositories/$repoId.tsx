@@ -32,6 +32,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDelivery, timeAgo } from "@/lib/format";
 import {
@@ -41,6 +42,7 @@ import {
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { repoDetailQueryOptions } from "@/lib/repo-detail.queries";
+import { setRepoPrComments } from "@/lib/repo-settings.functions";
 
 const levelIcon = {
 	critical: WarningOctagonIcon,
@@ -95,6 +97,20 @@ function RepoDetail() {
 			}
 		},
 		onError: () => toast.error("Could not update environment variables"),
+	});
+
+	const setPrComments = useMutation({
+		mutationFn: setRepoPrComments,
+		onSuccess: (_, { data }) => {
+			queryClient.invalidateQueries({ queryKey: ["repos", repoId] });
+			toast.success(
+				data.enabled ? "PR comments turned on" : "PR comments turned off",
+			);
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error ? err.message : "Could not update the setting",
+			),
 	});
 
 	const disconnect = useMutation({
@@ -424,6 +440,30 @@ function RepoDetail() {
 						</Card>
 					) : (
 						<>
+							<Card className="p-5">
+								<div className="flex items-start justify-between gap-4">
+									<div>
+										<h2 className="font-semibold text-sm">
+											Pull request comments
+										</h2>
+										<p className="mt-1 text-xs text-muted-foreground">
+											Post each run's results as a comment on the pull request,
+											updated on every push. The check passes or fails either
+											way.
+										</p>
+									</div>
+									<Switch
+										checked={repo.postPrComments}
+										disabled={setPrComments.isPending}
+										onCheckedChange={(enabled) =>
+											setPrComments.mutate({
+												data: { repoId, enabled: Boolean(enabled) },
+											})
+										}
+										aria-label="Post results as a pull request comment"
+									/>
+								</div>
+							</Card>
 							<Card className="p-5">
 								<h2 className="font-semibold text-sm">Environment variables</h2>
 								<p className="mt-1 text-xs text-muted-foreground">

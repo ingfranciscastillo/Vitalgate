@@ -1,0 +1,1 @@
+ALTER TABLE "repos" ADD COLUMN "post_pr_comments" boolean DEFAULT true NOT NULL;

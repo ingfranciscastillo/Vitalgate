@@ -11,8 +11,8 @@ import {
 	type BudgetMetric,
 	isBudgetMetric,
 } from "@/lib/budgets";
-import { updateRepoBudgets } from "@/lib/budgets.functions";
 import { METRIC_META, type MetricKey, type Severity } from "@/lib/mock-data";
+import { updateRepoBudgets } from "@/lib/repo-settings.functions";
 
 /** What a metric starts at when it's switched on and had no budget (the "default" preset). */
 const DEFAULTS: Record<BudgetMetric, { max: number; severity: Severity }> = {

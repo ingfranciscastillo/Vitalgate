@@ -64,7 +64,10 @@ export const connectRepoSchema = z.object({
 export const connectRepositoriesSchema = z.object({
 	repos: z.array(connectRepoSchema).min(1).max(100),
 	preset: z.enum(["default", "strict", "relaxed", "custom"]),
+	/** When false, every preset budget is created as a warning, so the check never fails. */
 	branchProtect: z.boolean(),
+	/** Whether the workflow posts a results comment on each PR (default on). */
+	postComments: z.boolean().optional(),
 	/** A package.json script name; it's written into the workflow's run step. */
 	startScript: z
 		.string()

@@ -52,6 +52,7 @@ export interface RepoDetail {
 	avgPerf: number | null;
 	lastRunAt: string | null;
 	envVarNames: string[];
+	postPrComments: boolean;
 	budgets: RepoDetailBudget[];
 	pulls: RepoDetailPull[];
 	series: RepoDetailSeriesPoint[];
@@ -73,6 +74,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 				fullName: repos.fullName,
 				defaultBranch: repos.defaultBranch,
 				envVarNames: repos.envVarNames,
+				postPrComments: repos.postPrComments,
 			})
 			.from(repos)
 			.where(
@@ -151,6 +153,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 			avgPerf: agg?.avgPerf != null ? Math.round(Number(agg.avgPerf)) : null,
 			lastRunAt: agg?.lastRunAt ? new Date(agg.lastRunAt).toISOString() : null,
 			envVarNames: repo.envVarNames,
+			postPrComments: repo.postPrComments,
 			budgets: budgetRows,
 			pulls: pullRows,
 			alerts: alertRows.map((a) => ({
