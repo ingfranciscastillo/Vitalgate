@@ -1,34 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
+import { contactSchema } from "@/lib/contact-schema";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 import { consumeRateLimit, getClientIp } from "@/lib/rate-limit.server";
 import { parseInput } from "@/lib/validation";
-
-/** Also mirrored as maxLength on the form fields in routes/contact.tsx. */
-export const CONTACT_LIMITS = { name: 100, email: 254, message: 5000 };
-
-const contactSchema = z.object({
-	name: z
-		.string()
-		.trim()
-		.min(1, "Enter your name.")
-		.max(CONTACT_LIMITS.name, "Name is too long."),
-	email: z
-		.email("Enter a valid email address.")
-		.trim()
-		.max(CONTACT_LIMITS.email, "Email is too long."),
-	message: z
-		.string()
-		.trim()
-		.min(1, "Enter a message.")
-		.max(
-			CONTACT_LIMITS.message,
-			`Keep the message under ${CONTACT_LIMITS.message} characters.`,
-		),
-	/** Honeypot: hidden from people, filled in by naive bots. */
-	website: z.string().max(200).optional(),
-});
 
 /**
  * Relays the public contact form to CONTACT_EMAIL through Resend. It's an

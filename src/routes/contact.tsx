@@ -1,6 +1,5 @@
-import { useMutation } from "@tanstack/react-query";
+import { type AnyFieldApi, useForm } from "@tanstack/react-form";
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
 import toast from "react-hot-toast";
 import { MarketingShell } from "@/components/marketing-shell";
 import { Reveal } from "@/components/reveal";
@@ -9,7 +8,12 @@ import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { CONTACT_LIMITS, sendContactMessage } from "@/lib/contact.functions";
+import { sendContactMessage } from "@/lib/contact.functions";
+import {
+	CONTACT_LIMITS,
+	type ContactValues,
+	contactSchema,
+} from "@/lib/contact-schema";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/contact")({
@@ -31,24 +35,33 @@ export const Route = createFileRoute("/contact")({
 	component: Contact,
 });
 
-function Contact() {
-	const [name, setName] = useState("");
-	const [email, setEmail] = useState("");
-	const [message, setMessage] = useState("");
-	const [website, setWebsite] = useState("");
+const EMPTY_FORM: ContactValues = {
+	name: "",
+	email: "",
+	message: "",
+	website: "",
+};
 
-	const sendMutation = useMutation({
-		mutationFn: sendContactMessage,
-		onSuccess: () => {
-			toast.success("Message sent — we'll get back to you soon.");
-			setName("");
-			setEmail("");
-			setMessage("");
-		},
-		onError: (error) => {
-			toast.error(
-				error instanceof Error ? error.message : "Could not send your message",
-			);
+function Contact() {
+	const form = useForm({
+		defaultValues: EMPTY_FORM,
+		// The same schema the server validates against, re-run on every change
+		// (and on submit). Deliberately not an onSubmit validator: its errors
+		// are only recomputed by the next submit, which they themselves block
+		// via canSubmit, so a corrected form could never be sent again.
+		validators: { onChange: contactSchema },
+		onSubmit: async ({ value, formApi }) => {
+			try {
+				await sendContactMessage({ data: value });
+				toast.success("Message sent — we'll get back to you soon.");
+				formApi.reset();
+			} catch (error) {
+				toast.error(
+					error instanceof Error
+						? error.message
+						: "Could not send your message",
+				);
+			}
 		},
 	});
 
@@ -69,76 +82,144 @@ function Contact() {
 				<Reveal delay={0.08}>
 					<Card className="mt-10 p-6">
 						<form
-							className="grid gap-4"
+							noValidate
+							className="relative grid gap-4"
 							onSubmit={(e) => {
 								e.preventDefault();
-								sendMutation.mutate({
-									data: { name, email, message, website },
-								});
+								e.stopPropagation();
+								form.handleSubmit();
 							}}
 						>
 							<div className="grid gap-4 sm:grid-cols-2">
-								<div className="space-y-1.5">
-									<Label htmlFor="contact-name">Name</Label>
-									<Input
-										id="contact-name"
-										value={name}
-										onChange={(e) => setName(e.target.value)}
-										maxLength={CONTACT_LIMITS.name}
-										required
-									/>
-								</div>
-								<div className="space-y-1.5">
-									<Label htmlFor="contact-email">Email</Label>
-									<Input
-										id="contact-email"
-										type="email"
-										value={email}
-										onChange={(e) => setEmail(e.target.value)}
-										maxLength={CONTACT_LIMITS.email}
-										required
-									/>
-								</div>
+								<form.Field name="name">
+									{(field) => (
+										<div className="space-y-1.5">
+											<Label htmlFor="contact-name">Name</Label>
+											<Input
+												id="contact-name"
+												name={field.name}
+												autoComplete="name"
+												value={field.state.value}
+												onBlur={field.handleBlur}
+												onChange={(e) => field.handleChange(e.target.value)}
+												maxLength={CONTACT_LIMITS.name}
+												{...errorProps(field, "contact-name-error")}
+											/>
+											<FieldError field={field} id="contact-name-error" />
+										</div>
+									)}
+								</form.Field>
+								<form.Field name="email">
+									{(field) => (
+										<div className="space-y-1.5">
+											<Label htmlFor="contact-email">Email</Label>
+											<Input
+												id="contact-email"
+												name={field.name}
+												type="email"
+												autoComplete="email"
+												value={field.state.value}
+												onBlur={field.handleBlur}
+												onChange={(e) => field.handleChange(e.target.value)}
+												maxLength={CONTACT_LIMITS.email}
+												{...errorProps(field, "contact-email-error")}
+											/>
+											<FieldError field={field} id="contact-email-error" />
+										</div>
+									)}
+								</form.Field>
 							</div>
-							<div className="space-y-1.5">
-								<Label htmlFor="contact-message">Message</Label>
-								<Textarea
-									id="contact-message"
-									rows={5}
-									value={message}
-									onChange={(e) => setMessage(e.target.value)}
-									maxLength={CONTACT_LIMITS.message}
-									required
-								/>
-							</div>
-							{/* Honeypot: off-screen and skipped by keyboard and screen
-							    readers, so only bots fill it in. */}
-							<div
-								aria-hidden="true"
-								className="absolute -left-[9999px] h-0 w-0 overflow-hidden"
-							>
-								<label htmlFor="contact-website">Website</label>
-								<input
-									id="contact-website"
-									name="website"
-									type="text"
-									tabIndex={-1}
-									autoComplete="off"
-									value={website}
-									onChange={(e) => setWebsite(e.target.value)}
-								/>
-							</div>
-							<Button
-								type="submit"
-								className="justify-self-start"
-								disabled={sendMutation.isPending}
-							>
-								{sendMutation.isPending ? "Sending…" : "Send message"}
-							</Button>
+							<form.Field name="message">
+								{(field) => (
+									<div className="space-y-1.5">
+										<Label htmlFor="contact-message">Message</Label>
+										<Textarea
+											id="contact-message"
+											name={field.name}
+											rows={5}
+											value={field.state.value}
+											onBlur={field.handleBlur}
+											onChange={(e) => field.handleChange(e.target.value)}
+											maxLength={CONTACT_LIMITS.message}
+											{...errorProps(field, "contact-message-error")}
+										/>
+										<FieldError field={field} id="contact-message-error" />
+									</div>
+								)}
+							</form.Field>
+
+							{/* Honeypot. Moved off-screen rather than display:none (which
+							    some bots skip), and hidden from keyboard, screen
+							    readers and autofill, so only a bot fills it in. */}
+							<form.Field name="website">
+								{(field) => (
+									<div
+										aria-hidden="true"
+										className="pointer-events-none absolute -left-[9999px] top-0 h-px w-px overflow-hidden opacity-0"
+									>
+										<label htmlFor="contact-website">
+											Leave this field empty
+										</label>
+										<input
+											id="contact-website"
+											name={field.name}
+											type="text"
+											tabIndex={-1}
+											autoComplete="off"
+											data-1p-ignore
+											data-lpignore="true"
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+										/>
+									</div>
+								)}
+							</form.Field>
+
+							<form.Subscribe selector={(state) => state.isSubmitting}>
+								{(isSubmitting) => (
+									<Button
+										type="submit"
+										className="justify-self-start"
+										disabled={isSubmitting}
+									>
+										{isSubmitting ? "Sending…" : "Send message"}
+									</Button>
+								)}
+							</form.Subscribe>
 						</form>
 					</Card>
 				</Reveal>
 			</section>
 		</MarketingShell>
+	);
+}
+
+/**
+ * First Standard Schema issue for a field — shown once the visitor has left
+ * the field or tried to submit, not while they're still typing in it.
+ */
+function fieldErrorMessage(field: AnyFieldApi): string | undefined {
+	const { errors, isBlurred } = field.state.meta;
+	const attempted = field.form.state.submissionAttempts > 0;
+	if (!(isBlurred || attempted) || errors.length === 0) return undefined;
+	const first = errors[0] as { message?: string } | string | undefined;
+	return typeof first === "string" ? first : first?.message;
+}
+
+function errorProps(field: AnyFieldApi, errorId: string) {
+	const invalid = fieldErrorMessage(field) !== undefined;
+	return {
+		"aria-invalid": invalid || undefined,
+		"aria-describedby": invalid ? errorId : undefined,
+	};
+}
+
+function FieldError({ field, id }: { field: AnyFieldApi; id: string }) {
+	const message = fieldErrorMessage(field);
+	if (!message) return null;
+	return (
+		<p id={id} role="alert" className="text-xs text-destructive">
+			{message}
+		</p>
 	);
 }
