@@ -5,6 +5,7 @@ import {
 	integer,
 	jsonb,
 	pgTable,
+	primaryKey,
 	text,
 	timestamp,
 	uniqueIndex,
@@ -157,6 +158,24 @@ export const alerts = pgTable("alerts", {
 	message: text("message").notNull(),
 	createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+/**
+ * Which alerts each user has read — notification read state is personal,
+ * not shared across a workspace. A missing row means unread.
+ */
+export const alertReads = pgTable(
+	"alert_reads",
+	{
+		userId: text("user_id")
+			.notNull()
+			.references(() => user.id, { onDelete: "cascade" }),
+		alertId: text("alert_id")
+			.notNull()
+			.references(() => alerts.id, { onDelete: "cascade" }),
+		readAt: timestamp("read_at").defaultNow().notNull(),
+	},
+	(t) => [primaryKey({ columns: [t.userId, t.alertId] })],
+);
 
 /**
  * Per-org on/off state for a fixed set of alert rules (see AlertRuleKey).
