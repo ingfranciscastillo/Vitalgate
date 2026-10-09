@@ -5,6 +5,7 @@ import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
+import { getAppUrl } from "@/lib/app-url.server";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 
@@ -137,8 +138,7 @@ export const auth = betterAuth({
 				organization,
 				inviter,
 			}) => {
-				const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
-				const link = `${appUrl}/accept-invitation/${id}`;
+				const link = `${getAppUrl()}/accept-invitation/${id}`;
 				const orgName = escapeHtml(organization.name);
 				const inviterName = escapeHtml(inviter.user.name || inviter.user.email);
 				await sendEmail({

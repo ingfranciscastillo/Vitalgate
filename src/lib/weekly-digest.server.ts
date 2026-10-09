@@ -9,6 +9,7 @@ import {
 	repos,
 	user,
 } from "@/db/schema";
+import { getAppUrl } from "@/lib/app-url.server";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 
@@ -117,7 +118,7 @@ export async function runWeeklyDigest(): Promise<WeeklyDigestResult[]> {
 			and(eq(alertRules.rule, "weekly_digest"), eq(alertRules.enabled, true)),
 		);
 
-	const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+	const appUrl = getAppUrl();
 	const results: WeeklyDigestResult[] = [];
 
 	// Sequential, not Promise.all — gentle on Resend's rate limits, and a

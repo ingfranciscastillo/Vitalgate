@@ -1,3 +1,4 @@
+import { getAppUrl } from "@/lib/app-url.server";
 import { saveIntegration } from "@/lib/integrations.server";
 import type { IntegrationProvider } from "@/lib/mock-data";
 import { verifyOAuthState } from "@/lib/oauth-state.server";
@@ -18,7 +19,7 @@ export async function handleIntegrationCallback(
 	exchange: (code: string) => Promise<{ label: string; webhookUrl: string }>,
 ): Promise<Response> {
 	const url = new URL(request.url);
-	const appUrl = process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
+	const appUrl = getAppUrl();
 	const settingsUrl = `${appUrl}/settings`;
 
 	const oauthError = url.searchParams.get("error");

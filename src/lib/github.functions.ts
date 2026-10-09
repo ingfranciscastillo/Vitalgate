@@ -1,8 +1,8 @@
 import { createServerFn } from "@tanstack/react-start";
-import { getRequestHeaders } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { account, budgets, repos } from "@/db/schema";
+import { getAppUrl } from "@/lib/app-url.server";
 import { auth } from "@/lib/auth";
 import { ensureSession } from "@/lib/auth.functions";
 import {
@@ -152,27 +152,6 @@ function sanitizeEnvVarNames(names: string[] | undefined): string[] {
 	return Array.from(seen);
 }
 
-/**
- * Where Vitalgate is reachable, for the workflow's `fetch(...)` call to our
- * own ingest endpoint. Derived from the request that's connecting the repo
- * (the browser's Origin header) rather than an env var, so it's automatically
- * correct on localhost, a Vercel preview, and prod without any manual step —
- * and stays correct if the deployment domain ever changes.
- */
-function getVitalgateOrigin(): string {
-	const headers = getRequestHeaders();
-	const origin = headers.get("origin");
-	if (origin) return origin;
-
-	const host = headers.get("host");
-	if (host) {
-		const proto = headers.get("x-forwarded-proto") ?? "https";
-		return `${proto}://${host}`;
-	}
-
-	return process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
-}
-
 interface RegenerateWorkflowRepo {
 	/** GitHub's numeric repo id, e.g. "1357877390" — not the DB row id. */
 	githubRepoId: string;
@@ -258,7 +237,9 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		}
 
 		const accessToken = await getGithubAccessToken(session.user.id);
-		const vitalgateOrigin = getVitalgateOrigin();
+		// Fixed public origin, not this request's Origin header: connecting from
+		// a preview deployment must not bake a temporary URL into the user's repo.
+		const vitalgateOrigin = getAppUrl();
 		const presetBudgets = PRESET_BUDGETS[data.preset] ?? [];
 		const envVarNames = sanitizeEnvVarNames(data.envVarNames);
 		let connected = 0;
@@ -383,7 +364,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 			accessToken,
 			repo,
 			envVarNames,
-			getVitalgateOrigin(),
+			getAppUrl(),
 		);
 
 		return { envVarNames, workflowResult };

@@ -1,12 +1,9 @@
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { integrations } from "@/db/schema";
+import { getAppUrl } from "@/lib/app-url.server";
 import { encryptSecret } from "@/lib/crypto.server";
 import type { IntegrationProvider } from "@/lib/mock-data";
-
-function getAppUrl(): string {
-	return process.env.BETTER_AUTH_URL ?? "http://localhost:3000";
-}
 
 function getRedirectUri(provider: IntegrationProvider): string {
 	return `${getAppUrl()}/api/integrations/${provider}/callback`;
