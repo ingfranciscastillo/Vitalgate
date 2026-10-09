@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { getAppUrl } from "@/lib/app-url.server";
 import { auth } from "@/lib/auth";
 import { linkInstallation } from "@/lib/github-installation.server";
-import { verifyOAuthState } from "@/lib/oauth-state.server";
+import { verifyOAuthStatePayload } from "@/lib/oauth-state.server";
 
 function redirect(url: string) {
 	return new Response(null, { status: 302, headers: { location: url } });
@@ -17,9 +17,14 @@ function redirect(url: string) {
 async function handleSetup(request: Request): Promise<Response> {
 	const url = new URL(request.url);
 	const appUrl = getAppUrl();
+	// Installs started from the connect page go back there, so the user can
+	// pick a repo right away; everything else lands on Settings.
+	const state = url.searchParams.get("state");
+	const verified = state ? verifyOAuthStatePayload(state) : null;
+	const page = verified?.tag === "connect" ? "/repositories/new" : "/settings";
 	const done = (status: "connected" | "error", reason?: string) =>
 		redirect(
-			`${appUrl}/settings?integration=github&status=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ""}`,
+			`${appUrl}${page}?integration=github&status=${status}${reason ? `&reason=${encodeURIComponent(reason)}` : ""}`,
 		);
 
 	const session = await auth.api.getSession({ headers: request.headers });
@@ -45,9 +50,8 @@ async function handleSetup(request: Request): Promise<Response> {
 	// Installs started from Vitalgate carry the workspace in a signed state.
 	// Changes made later from GitHub's own settings page come back without
 	// one; those apply to the workspace the user currently has open.
-	const state = url.searchParams.get("state");
 	const organizationId = state
-		? verifyOAuthState(state)
+		? (verified?.organizationId ?? null)
 		: session.session.activeOrganizationId;
 	if (!organizationId) {
 		return done(

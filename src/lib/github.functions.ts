@@ -19,7 +19,10 @@ import {
 	listInstallationRepos,
 	pickServeScript,
 } from "@/lib/github";
-import { getInstallationToken } from "@/lib/github-app.server";
+import {
+	getInstallationToken,
+	isGithubAppConfigured,
+} from "@/lib/github-app.server";
 import type { Action, MetricKey, Severity } from "@/lib/mock-data";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
@@ -91,15 +94,36 @@ async function getRepoToken(
 		: getGithubAccessToken(userId);
 }
 
+export interface ConnectableRepos {
+	repos: GhRepo[];
+	/**
+	 * True when the GitHub App is set up on this deployment but the workspace
+	 * hasn't installed it yet — the connect page asks for that instead of
+	 * listing repos.
+	 */
+	needsAppInstall: boolean;
+}
+
 export const getConnectableRepos = createServerFn({ method: "GET" }).handler(
-	async (): Promise<GhRepo[]> => {
+	async (): Promise<ConnectableRepos> => {
 		const session = await ensureSession();
 		const organizationId = session.session.activeOrganizationId;
 		const appRepos = organizationId
 			? await getInstallationRepos(organizationId)
 			: null;
-		if (appRepos) return [...appRepos.values()].map((r) => r.repo);
-		return listGithubRepos(await getGithubAccessToken(session.user.id));
+		if (appRepos) {
+			return {
+				repos: [...appRepos.values()].map((r) => r.repo),
+				needsAppInstall: false,
+			};
+		}
+		if (isGithubAppConfigured()) return { repos: [], needsAppInstall: true };
+		// Deployments without the app keep connecting through the user's
+		// OAuth token.
+		return {
+			repos: await listGithubRepos(await getGithubAccessToken(session.user.id)),
+			needsAppInstall: false,
+		};
 	},
 );
 

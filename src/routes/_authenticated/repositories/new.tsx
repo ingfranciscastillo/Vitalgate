@@ -18,7 +18,7 @@ import {
 } from "@tanstack/react-query";
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
 import { AppShell } from "@/components/app-shell";
 import { RepoLimitDialog } from "@/components/repo-limit-dialog";
@@ -38,6 +38,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient } from "@/lib/auth-client";
 import { connectRepositories } from "@/lib/github.functions";
 import { connectableReposQueryOptions } from "@/lib/github.queries";
+import { getGithubInstallUrl } from "@/lib/integrations.functions";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
@@ -93,7 +94,9 @@ const PRESETS: {
 ];
 
 function ConnectRepo() {
-	const { data: available } = useSuspenseQuery(connectableReposQueryOptions());
+	const {
+		data: { repos: available, needsAppInstall },
+	} = useSuspenseQuery(connectableReposQueryOptions());
 	const { data: connectedRepos } = useQuery(orgReposQueryOptions());
 	const { data: activeOrg } = authClient.useActiveOrganization();
 	const navigate = useNavigate();
@@ -172,6 +175,33 @@ function ConnectRepo() {
 	});
 
 	const isAdmin = useIsOrgAdmin();
+	const [openingGithub, setOpeningGithub] = useState(false);
+
+	const installGithubApp = async () => {
+		setOpeningGithub(true);
+		try {
+			window.location.href = await getGithubInstallUrl({ data: "connect" });
+		} catch (err) {
+			toast.error(err instanceof Error ? err.message : "Could not open GitHub");
+			setOpeningGithub(false);
+		}
+	};
+
+	// Back from installing the app (/api/github/setup redirects here with
+	// ?integration=github&status=…): say how it went once, then clean the URL.
+	useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+		if (params.get("integration") !== "github") return;
+		if (params.get("status") === "connected") {
+			toast.success("GitHub App installed — pick a repository to connect.");
+		} else {
+			const reason = params.get("reason");
+			toast.error(
+				`Could not install the GitHub App${reason ? `: ${reason}` : ""}`,
+			);
+		}
+		window.history.replaceState({}, "", window.location.pathname);
+	}, []);
 
 	const onConnect = () => {
 		if (selected.length === 0) {
@@ -213,6 +243,38 @@ function ConnectRepo() {
 						Only workspace owners and admins can connect repositories. Ask an
 						admin of this workspace to connect it, or to change your role.
 					</p>
+				</Card>
+			</AppShell>
+		);
+	}
+
+	if (needsAppInstall) {
+		return (
+			<AppShell title="Connect a repository">
+				<Card className="p-6 max-w-xl">
+					<div className="flex items-start gap-3">
+						<div className="grid h-9 w-9 shrink-0 place-items-center rounded-md bg-muted">
+							<GithubLogoIcon className="h-4 w-4" />
+						</div>
+						<div>
+							<h2 className="font-semibold">
+								Install the Vitalgate GitHub App
+							</h2>
+							<p className="mt-1 text-sm text-muted-foreground">
+								You choose which repositories Vitalgate can access. It only gets
+								what it needs there: adding its workflow file and commenting
+								results on pull requests. You come back here to pick a
+								repository once it's installed.
+							</p>
+							<Button
+								className="mt-4"
+								disabled={openingGithub}
+								onClick={installGithubApp}
+							>
+								{openingGithub ? "Opening GitHub…" : "Install GitHub App"}
+							</Button>
+						</div>
+					</div>
 				</Card>
 			</AppShell>
 		);
@@ -395,6 +457,17 @@ function ConnectRepo() {
 										})}
 									</AnimatePresence>
 								</motion.ul>
+								<div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+									Don't see a repository?{" "}
+									<button
+										type="button"
+										className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-60"
+										disabled={openingGithub}
+										onClick={installGithubApp}
+									>
+										Give the GitHub App access to it
+									</button>
+								</div>
 							</Card>
 
 							<div className="text-xs text-muted-foreground">

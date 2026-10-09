@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { and, eq } from "drizzle-orm";
+import { z } from "zod";
 import { db } from "@/db";
 import { account, githubInstallations, integrations, repos } from "@/db/schema";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
@@ -133,11 +134,12 @@ export const disconnectIntegration = createServerFn({ method: "POST" })
 	});
 
 /** URL that starts the GitHub App installation for the active workspace. Owners and admins only. */
-export const getGithubInstallUrl = createServerFn({ method: "GET" }).handler(
-	async (): Promise<string> => {
+export const getGithubInstallUrl = createServerFn({ method: "GET" })
+	.validator(parseInput(z.enum(["connect", "settings"])))
+	.handler(async ({ data: returnTo }): Promise<string> => {
 		const { organizationId } = await requireOrgAdmin();
 		// Same signed, short-lived state as Slack/Discord: it tells
-		// /api/github/setup which workspace started the install.
-		return getInstallUrl(signOAuthState(organizationId));
-	},
-);
+		// /api/github/setup which workspace started the install, and which
+		// page to send the user back to.
+		return getInstallUrl(signOAuthState(organizationId, returnTo));
+	});

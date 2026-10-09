@@ -15,8 +15,12 @@ function getSecret(): string {
  * that started the flow — no server-side session/cookie storage needed
  * across the redirect to Slack/Discord and back.
  */
-export function signOAuthState(organizationId: string): string {
-	const payload = `${organizationId}.${Date.now()}`;
+export function signOAuthState(
+	organizationId: string,
+	/** Optional short tag (no dots) the callback reads back, e.g. where to return to. */
+	tag = "",
+): string {
+	const payload = `${organizationId}.${Date.now()}.${tag}`;
 	const sig = createHmac("sha256", getSecret())
 		.update(payload)
 		.digest("base64url");
@@ -25,6 +29,13 @@ export function signOAuthState(organizationId: string): string {
 
 /** Returns the organizationId if `state` is authentic and unexpired, otherwise null. */
 export function verifyOAuthState(state: string): string | null {
+	return verifyOAuthStatePayload(state)?.organizationId ?? null;
+}
+
+/** Like verifyOAuthState, plus the tag it was signed with ("" if none). */
+export function verifyOAuthStatePayload(
+	state: string,
+): { organizationId: string; tag: string } | null {
 	const [payloadB64, sig] = state.split(".");
 	if (!payloadB64 || !sig) return null;
 
@@ -41,7 +52,7 @@ export function verifyOAuthState(state: string): string | null {
 		return null;
 	}
 
-	const [organizationId, tsRaw] = payload.split(".");
+	const [organizationId, tsRaw, tag = ""] = payload.split(".");
 	const ts = Number(tsRaw);
 	if (
 		!organizationId ||
@@ -50,5 +61,5 @@ export function verifyOAuthState(state: string): string | null {
 	) {
 		return null;
 	}
-	return organizationId;
+	return { organizationId, tag };
 }

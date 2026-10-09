@@ -267,7 +267,7 @@ function IntegrationsTab() {
 	const installGithubApp = async () => {
 		setConnecting("github");
 		try {
-			window.location.href = await getGithubInstallUrl();
+			window.location.href = await getGithubInstallUrl({ data: "settings" });
 		} catch (err) {
 			toast.error(err instanceof Error ? err.message : "Could not open GitHub");
 			setConnecting(null);
