@@ -71,7 +71,7 @@ function Alerts() {
 							</p>
 						) : (
 							<motion.ul
-								className="mt-4 divide-y divide-border"
+								className="mt-3 divide-y divide-border [&>li:first-child]:pt-0"
 								variants={staggerContainer}
 								initial="hidden"
 								animate="show"
