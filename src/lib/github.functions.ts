@@ -266,7 +266,12 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		// a preview deployment must not bake a temporary URL into the user's repo.
 		const vitalgateOrigin = getAppUrl();
 		const presetBudgets = PRESET_BUDGETS[data.preset] ?? [];
-		const envVarNames = sanitizeEnvVarNames(data.envVarNames);
+		// Undefined means "not filled in on the connect page": a new repo gets
+		// none, and a reconnected one keeps the names it already had.
+		const typedEnvVarNames =
+			data.envVarNames === undefined
+				? undefined
+				: sanitizeEnvVarNames(data.envVarNames);
 		let connected = 0;
 		let workflowsAdded = 0;
 		let workflowsUpdated = 0;
@@ -297,16 +302,18 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					fullName: repo.fullName,
 					defaultBranch: repo.defaultBranch,
 					private: repo.private,
-					envVarNames,
+					envVarNames: typedEnvVarNames ?? [],
 					postPrComments: data.postComments ?? true,
 					installationId,
 				})
 				.onConflictDoNothing({
 					target: [repos.organizationId, repos.githubRepoId],
 				})
-				.returning({ id: repos.id });
+				.returning({ id: repos.id, envVarNames: repos.envVarNames });
 
+			let envVarNames: string[];
 			if (inserted) {
+				envVarNames = inserted.envVarNames;
 				connected++;
 
 				if (presetBudgets.length > 0) {
@@ -325,14 +332,16 @@ export const connectRepositories = createServerFn({ method: "POST" })
 			} else {
 				// Already connected to this org — "connecting" it again is how a
 				// user regenerates the workflow (no separate disconnect flow yet),
-				// so update the stored env var names and fall through to recommit
-				// the workflow file below. Budgets are deliberately left untouched:
+				// so update its settings and fall through to recommit the workflow
+				// file below. Env var names are only replaced when some were typed:
+				// reconnecting with the field left empty used to wipe them, and the
+				// regenerated workflow then started the app without its secrets. Budgets are deliberately left untouched:
 				// re-applying the preset here would clobber anything the user has
 				// customized since.
 				const [existing] = await db
 					.update(repos)
 					.set({
-						envVarNames,
+						...(typedEnvVarNames ? { envVarNames: typedEnvVarNames } : {}),
 						postPrComments: data.postComments ?? true,
 						installationId,
 					})
@@ -342,8 +351,9 @@ export const connectRepositories = createServerFn({ method: "POST" })
 							eq(repos.githubRepoId, repo.id),
 						),
 					)
-					.returning({ id: repos.id });
+					.returning({ id: repos.id, envVarNames: repos.envVarNames });
 				if (!existing) continue; // shouldn't happen, but nothing to regenerate against
+				envVarNames = existing.envVarNames;
 			}
 
 			// Best-effort: a repo we can't write the workflow to (e.g. the OAuth

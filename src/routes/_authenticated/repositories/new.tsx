@@ -194,10 +194,13 @@ function ConnectRepo() {
 				postComments,
 				startScript: startScript.trim() || undefined,
 				port: port.trim() ? Number(port) : undefined,
-				envVarNames: envVarNames
-					.split(",")
-					.map((n) => n.trim())
-					.filter(Boolean),
+				// Left empty, the server keeps a reconnected repo's existing names.
+				envVarNames: envVarNames.trim()
+					? envVarNames
+							.split(",")
+							.map((n) => n.trim())
+							.filter(Boolean)
+					: undefined,
 			},
 		});
 	};
@@ -525,7 +528,8 @@ function ConnectRepo() {
 									only stores the names; each becomes a{" "}
 									<code className="font-mono">secrets.NAME</code> reference in
 									the generated workflow, so the secret must already exist in
-									this repo's own GitHub settings.
+									this repo's own GitHub settings. Leave it empty when
+									reconnecting to keep the names a repo already has.
 								</p>
 								<div className="mt-4 space-y-1.5">
 									<Label htmlFor="env-var-names" className="text-sm">
