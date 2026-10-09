@@ -21,6 +21,19 @@ export const auth = betterAuth({
 	}),
 	emailAndPassword: {
 		enabled: true,
+		// Accounts are only ever created through GitHub sign-in. Email+password
+		// stays enabled solely so a GitHub user can add a password to their
+		// existing account (setInitialPassword); without this, anyone could
+		// POST /api/auth/sign-up/email and create an unverified account + org.
+		disableSignUp: true,
+	},
+	account: {
+		// The GitHub token carries `repo` + `workflow` scopes — write access to
+		// every repo the user can reach. Encrypted at rest; read it back only
+		// through getGithubAccessToken (auth.api.getAccessToken), never from
+		// the account table directly. Tokens stored before this was enabled
+		// are still read as plain text and get encrypted on next sign-in.
+		encryptOAuthTokens: true,
 	},
 	socialProviders: {
 		github: {
@@ -42,6 +55,9 @@ export const auth = betterAuth({
 		},
 	},
 	rateLimit: {
+		// The default in-memory store is per serverless instance on Vercel, so
+		// it barely limits anything; the database store is shared.
+		storage: "database",
 		customRules: {
 			"/api/auth/sign-in/email": { window: 60, max: 5 },
 			"/api/auth/sign-up/email": { window: 60, max: 3 },

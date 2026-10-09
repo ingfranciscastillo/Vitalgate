@@ -3,6 +3,7 @@ import { getRequestHeaders } from "@tanstack/react-start/server";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { account, budgets, repos } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { ensureSession } from "@/lib/auth.functions";
 import {
 	type CommitWorkflowResult,
@@ -20,19 +21,28 @@ import { FREE_REPO_LIMIT, isPro } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
 
+/**
+ * Goes through better-auth rather than reading account.accessToken: the
+ * column is encrypted (account.encryptOAuthTokens in auth.ts), and this also
+ * refreshes the token if GitHub ever issues expiring ones.
+ */
 async function getGithubAccessToken(userId: string): Promise<string> {
 	const [githubAccount] = await db
-		.select({ accessToken: account.accessToken })
+		.select({ id: account.id })
 		.from(account)
 		.where(and(eq(account.userId, userId), eq(account.providerId, "github")))
 		.limit(1);
 
-	if (!githubAccount?.accessToken) {
-		throw new Error(
-			"No GitHub account connected. Sign in with GitHub to connect repositories.",
-		);
-	}
-	return githubAccount.accessToken;
+	const noAccount = new Error(
+		"No GitHub account connected. Sign in with GitHub to connect repositories.",
+	);
+	if (!githubAccount) throw noAccount;
+
+	const { accessToken } = await auth.api.getAccessToken({
+		body: { accountId: githubAccount.id, userId },
+	});
+	if (!accessToken) throw noAccount;
+	return accessToken;
 }
 
 export const getConnectableRepos = createServerFn({ method: "GET" }).handler(

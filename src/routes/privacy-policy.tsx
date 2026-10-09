@@ -113,7 +113,8 @@ function PrivacyPolicy() {
 								<strong>Integration data.</strong> If you connect Slack or
 								Discord, we store the incoming-webhook URL for the channel you
 								choose, encrypted, plus a label with the team and channel name.
-								We don't read your Slack or Discord messages.
+								We use it only to post the Vitalgate alerts you've enabled to
+								that channel, and we don't read your Slack or Discord messages.
 							</p>
 							<p>
 								<strong>Preferences.</strong> Your notification settings and
@@ -202,7 +203,8 @@ function PrivacyPolicy() {
 									delivers contact form messages to us.
 								</li>
 								<li>
-									<strong>Slack / Discord</strong> — only if you connect them.
+									<strong>Slack / Discord</strong> — only if you connect them,
+									to receive the alerts posted to your channel.
 								</li>
 							</ul>
 							<p>
