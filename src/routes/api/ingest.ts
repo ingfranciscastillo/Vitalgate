@@ -12,6 +12,7 @@ import {
 import { deliverAlerts } from "@/lib/alert-delivery.server";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import { getAppUrl } from "@/lib/app-url.server";
+import { upsertPrCommentAsApp } from "@/lib/github-pr-comment.server";
 import type {
 	AlertRuleKey,
 	MetricKey,
@@ -150,6 +151,7 @@ async function handleIngest(request: Request) {
 			id: repos.id,
 			fullName: repos.fullName,
 			postPrComments: repos.postPrComments,
+			installationId: repos.installationId,
 		})
 		.from(repos)
 		.where(
@@ -356,7 +358,20 @@ async function handleIngest(request: Request) {
 				isFirstRun: !lastRun,
 			});
 
-	return json({ status, violations, comment });
+	// With the GitHub App, Vitalgate posts the comment itself (as the app,
+	// and on fork PRs too) and the workflow gets nothing to post. Without it,
+	// or if that fails, the workflow posts it with its own token.
+	const postedByApp =
+		comment !== null &&
+		repo.installationId !== null &&
+		(await upsertPrCommentAsApp({
+			installationId: repo.installationId,
+			repoFullName: repo.fullName,
+			prNumber: body.prNumber,
+			body: comment,
+		}));
+
+	return json({ status, violations, comment: postedByApp ? null : comment });
 }
 
 export const Route = createFileRoute("/api/ingest")({

@@ -45,6 +45,11 @@ export function isGithubAppConfigured(): boolean {
 	);
 }
 
+/** The login GitHub shows on everything the app does, e.g. "vitalgate-dev[bot]". */
+export function getAppBotLogin(): string {
+	return `${getConfig().slug}[bot]`;
+}
+
 /** Where to send a user to install the app; `state` comes back to the setup URL untouched. */
 export function getInstallUrl(state: string): string {
 	const params = new URLSearchParams({ state });
