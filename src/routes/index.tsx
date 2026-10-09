@@ -36,7 +36,7 @@ export const Route = createFileRoute("/")({
 			{
 				name: "description",
 				content:
-					"Ship faster without shipping regressions. Vitalgate runs Lighthouse on every PR, enforces your performance budgets, and blocks merges that break them.",
+					"Ship faster without shipping regressions. Vitalgate runs Lighthouse on every PR, checks it against your performance budgets, and fails the PR check when a change breaks them.",
 			},
 			{ property: "og:type", content: "website" },
 			{ property: "og:url", content: SITE_URL },
@@ -60,7 +60,7 @@ export const Route = createFileRoute("/")({
 					applicationCategory: "DeveloperApplication",
 					operatingSystem: "Web",
 					description:
-						"Enforces Core Web Vitals performance budgets on every GitHub pull request, blocking merges that regress LCP, INP, CLS, and Lighthouse score.",
+						"Enforces web performance budgets on every GitHub pull request, failing the PR check when LCP, CLS, FCP, TBT or the Lighthouse score regress.",
 					offers: {
 						"@type": "Offer",
 						price: "0",
@@ -92,7 +92,7 @@ function Landing() {
 function Hero() {
 	const previewPr = PRS.find((p) => p.status === "failing") ?? PRS[0];
 	const previewRepo = getRepo(previewPr.repoId) ?? REPOS[0];
-	const previewMetrics: MetricKey[] = ["PERF", "LCP", "INP", "CLS"];
+	const previewMetrics: MetricKey[] = ["PERF", "LCP", "CLS", "TBT"];
 	const reduce = useReducedMotion();
 	const item = staggerItem(reduce);
 
@@ -111,8 +111,9 @@ function Hero() {
 						variants={item}
 						className="mt-5 max-w-md text-base leading-relaxed text-muted-foreground sm:text-lg"
 					>
-						Vitalgate runs Lighthouse on every pull request, diffs it against
-						your baseline, and blocks merges that break Core Web Vitals.
+						Vitalgate runs Lighthouse on every pull request, compares it against
+						your baseline, and fails the PR check when a change breaks your
+						budgets.
 					</motion.p>
 					<motion.div
 						variants={item}
@@ -172,12 +173,12 @@ function Flow() {
 		{
 			icon: GaugeIcon,
 			title: "Budget",
-			body: "Set hard limits for LCP, INP, CLS, FCP, TBT and Performance Score. Choose severity and action.",
+			body: "Pick a preset — default, strict or relaxed — for LCP, CLS, FCP, TBT and the performance score. Each metric is either required or a warning.",
 		},
 		{
 			icon: ShieldCheckIcon,
 			title: "Enforce",
-			body: "Every PR runs Lighthouse, diffs against the baseline, comments inline, and blocks merge on violations.",
+			body: "Every PR runs Lighthouse, compares against your baseline, posts the results on the PR, and fails the check when a required budget is broken.",
 		},
 	];
 	return (
@@ -220,17 +221,17 @@ function Features() {
 		{
 			icon: ShieldCheckIcon,
 			title: "Required checks",
-			body: "Block merges when a violation is severe enough to matter.",
+			body: "Mark the Vitalgate check as required and a broken budget can't be merged.",
 		},
 		{
 			icon: StackIcon,
-			title: "Per-route budgets",
-			body: "Different limits for home, checkout, product detail.",
+			title: "Runs on your runner",
+			body: "Audits run in your own GitHub Actions. Only the metrics come back.",
 		},
 		{
 			icon: FlowArrowIcon,
 			title: "Multi-tenant orgs",
-			body: "Workspaces, teams and roles, with viewer-only scope for contractors.",
+			body: "Invite your team as admins or view-only members, per workspace.",
 		},
 	];
 	return (
@@ -246,21 +247,21 @@ function Features() {
 						<div className="flex h-full flex-col border border-border p-6 transition-colors duration-200 hover:border-foreground/25">
 							<h3 className="font-bold">Lighthouse CI built-in</h3>
 							<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-								Mobile and desktop runs on every commit, with stable medians
-								across multiple passes.
+								A Lighthouse run on every push to a pull request, on your own
+								GitHub Actions runner.
 							</p>
 							<div className="mt-5 flex-1 border border-border bg-card">
 								<div className="border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
-									budgets.yml
+									Budgets · acme/storefront
 								</div>
 								<pre className="overflow-x-auto px-3 py-3 font-mono text-[12px] leading-relaxed">
 									<span className="text-muted-foreground">LCP:</span>
 									{"  "}max: 2500ms severity:{" "}
 									<span className="text-destructive">fail</span>
 									{"\n"}
-									<span className="text-muted-foreground">INP:</span>
-									{"  "}max: 200ms{"  "}severity:{" "}
-									<span className="text-destructive">fail</span>
+									<span className="text-muted-foreground">FCP:</span>
+									{"  "}max: 1800ms severity:{" "}
+									<span className="text-warning">warn</span>
 									{"\n"}
 									<span className="text-muted-foreground">CLS:</span>
 									{"  "}max: 0.10{"   "}severity:{" "}
@@ -275,10 +276,10 @@ function Features() {
 					</Reveal>
 					<Reveal delay={0.06}>
 						<div className="flex h-full flex-col border border-border p-6 transition-colors duration-200 hover:border-foreground/25">
-							<h3 className="font-bold">Inline PR comments</h3>
+							<h3 className="font-bold">PR comments</h3>
 							<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-								Per-metric diffs vs. main land directly in the PR, before a
-								human ever has to ask.
+								Per-metric changes vs. your baseline land directly in the PR,
+								before a human ever has to ask.
 							</p>
 							<div className="mt-5 flex-1 border border-border bg-card">
 								<div className="border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
@@ -286,7 +287,7 @@ function Features() {
 								</div>
 								<div className="px-3 py-3 text-[13px] leading-relaxed">
 									<span className="font-semibold text-destructive">
-										3 metrics regressed
+										2 metrics regressed
 									</span>
 									<div className="mt-2 space-y-1 font-mono text-[12px] text-muted-foreground">
 										<div>
@@ -294,8 +295,8 @@ function Features() {
 											(+38%, budget 2.5s)
 										</div>
 										<div>
-											INP <span className="text-foreground">140ms → 210ms</span>{" "}
-											(+50%, budget 200ms)
+											Score <span className="text-foreground">92 → 81</span>{" "}
+											(−11, budget ≥ 90)
 										</div>
 									</div>
 									<p className="mt-2 text-muted-foreground">
@@ -557,15 +558,15 @@ function Faq() {
 		},
 		{
 			q: "Where do the Lighthouse runs happen?",
-			a: "On your own GitHub Actions runner. Vitalgate never builds, hosts, or sees your source — the workflow it commits to your repo runs the audit and reports results back over a signed webhook.",
+			a: "On your own GitHub Actions runner. Vitalgate never builds or hosts your app: it only reads the files it needs to set up the workflow (like package.json), and the workflow sends the results back authenticated with your workspace's CI token.",
 		},
 		{
 			q: "Can I have different budgets per route?",
-			a: "Not yet — budgets today apply per repository, checked on every PR for LCP, INP, CLS, FCP, TBT and overall score. Per-route budgets are on the roadmap.",
+			a: "Not yet — budgets today apply per repository, checked on every PR for LCP, CLS, FCP, TBT and the overall score. Per-route budgets are on the roadmap.",
 		},
 		{
 			q: "What happens when a PR fails a budget?",
-			a: "Required metrics block the merge via a GitHub status check; soft ones just post a comment with the diff against your baseline. You choose which is which, per metric.",
+			a: "If a required budget fails, the Vitalgate check fails. Mark it as required in your branch protection rules and the PR can't be merged. Warnings show up in the PR comment without failing the check.",
 		},
 	];
 	return (

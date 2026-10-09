@@ -40,8 +40,8 @@ const plans = [
 		features: [
 			"1 connected repository",
 			"Unlimited pull requests audited",
-			"Core Web Vitals budgets (LCP, INP, CLS, FCP, TBT, score)",
-			"PR comments + merge blocking on failing budgets",
+			"Performance budgets (LCP, CLS, FCP, TBT, score)",
+			"PR comments + a failing check on broken budgets",
 			"Email alerts",
 			"Unlimited team members",
 		],
@@ -57,7 +57,7 @@ const plans = [
 			"Slack + Discord alert delivery",
 			"Custom alert rules (regressions, score thresholds)",
 			"Weekly performance digest email",
-			"Priority email support",
+			"Email support",
 		],
 	},
 ];
