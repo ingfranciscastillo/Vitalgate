@@ -17,7 +17,9 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:pull": "drizzle-kit pull",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@better-auth/drizzle-adapter": "^1.7.7",
@@ -64,6 +66,8 @@
     "@vitejs/plugin-react": "^6.1.2",
     "dotenv": "^18.0.6",
     "typescript": "^7.0.2",
-    "vite": "^8.3.4"
-  }
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
+  },
+  "packageManager": "pnpm@12.5.1"
 }
