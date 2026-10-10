@@ -340,7 +340,7 @@ function ConnectRepo() {
 							</div>
 
 							<motion.ul
-								className="max-h-[26rem] divide-y divide-border overflow-y-auto"
+								className="max-h-104 divide-y divide-border overflow-y-auto"
 								variants={staggerContainer}
 								initial="hidden"
 								animate="show"

@@ -68,7 +68,7 @@ export function NotificationBell() {
 				<Popover.Content
 					align="end"
 					sideOffset={8}
-					className="z-50 w-80 origin-(--radix-popover-content-transform-origin) border border-border bg-popover text-popover-foreground shadow-md outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-[250ms]"
+					className="z-50 w-80 origin-(--radix-popover-content-transform-origin) border border-border bg-popover text-popover-foreground shadow-md outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-250"
 				>
 					<div className="flex items-center justify-between border-b border-border px-4 py-3">
 						<h2 className="text-sm font-semibold">Notifications</h2>
