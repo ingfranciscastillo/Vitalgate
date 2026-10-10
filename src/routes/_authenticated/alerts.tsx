@@ -167,6 +167,7 @@ function Alerts() {
 											</Link>
 										) : (
 											<Switch
+												aria-label={r.label}
 												checked={r.enabled}
 												disabled={toggleRule.isPending || !isAdmin}
 												onCheckedChange={(enabled) =>

@@ -28,6 +28,7 @@ import { Route as AuthenticatedRepositoriesIndexRouteImport } from './routes/_au
 import { Route as AuthenticatedRepositoriesRepoIdRouteImport } from './routes/_authenticated/repositories/$repoId'
 import { Route as AuthenticatedRepositoriesNewRouteImport } from './routes/_authenticated/repositories/new'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiCronDailyDigestRouteImport } from './routes/api/cron/daily-digest'
 import { Route as ApiCronWeeklyDigestRouteImport } from './routes/api/cron/weekly-digest'
 import { Route as ApiGithubSetupRouteImport } from './routes/api/github/setup'
 import { Route as ApiIntegrationsDiscordCallbackRouteImport } from './routes/api/integrations/discord/callback'
@@ -131,6 +132,11 @@ const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   path: '/api/auth/$',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiCronDailyDigestRoute = ApiCronDailyDigestRouteImport.update({
+  id: '/api/cron/daily-digest',
+  path: '/api/cron/daily-digest',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiCronWeeklyDigestRoute = ApiCronWeeklyDigestRouteImport.update({
   id: '/api/cron/weekly-digest',
   path: '/api/cron/weekly-digest',
@@ -171,6 +177,7 @@ export interface FileRoutesByFullPath {
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/pulls/': typeof AuthenticatedPullsIndexRoute
@@ -195,6 +202,7 @@ export interface FileRoutesByTo {
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/pulls': typeof AuthenticatedPullsIndexRoute
@@ -221,6 +229,7 @@ export interface FileRoutesById {
   '/_authenticated/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/_authenticated/repositories/new': typeof AuthenticatedRepositoriesNewRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/_authenticated/pulls/': typeof AuthenticatedPullsIndexRoute
@@ -247,6 +256,7 @@ export interface FileRouteTypes {
     | '/repositories/$repoId'
     | '/repositories/new'
     | '/api/auth/$'
+    | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/pulls/'
@@ -271,6 +281,7 @@ export interface FileRouteTypes {
     | '/repositories/$repoId'
     | '/repositories/new'
     | '/api/auth/$'
+    | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/pulls'
@@ -296,6 +307,7 @@ export interface FileRouteTypes {
     | '/_authenticated/repositories/$repoId'
     | '/_authenticated/repositories/new'
     | '/api/auth/$'
+    | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/_authenticated/pulls/'
@@ -315,6 +327,7 @@ export interface RootRouteChildren {
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiCronDailyDigestRoute: typeof ApiCronDailyDigestRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
   ApiGithubSetupRoute: typeof ApiGithubSetupRoute
   ApiIntegrationsDiscordCallbackRoute: typeof ApiIntegrationsDiscordCallbackRoute
@@ -456,6 +469,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAuthSplatRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/cron/daily-digest': {
+      id: '/api/cron/daily-digest'
+      path: '/api/cron/daily-digest'
+      fullPath: '/api/cron/daily-digest'
+      preLoaderRoute: typeof ApiCronDailyDigestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/cron/weekly-digest': {
       id: '/api/cron/weekly-digest'
       path: '/api/cron/weekly-digest'
@@ -526,6 +546,7 @@ const rootRouteChildren: RootRouteChildren = {
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiCronDailyDigestRoute: ApiCronDailyDigestRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,
   ApiGithubSetupRoute: ApiGithubSetupRoute,
   ApiIntegrationsDiscordCallbackRoute: ApiIntegrationsDiscordCallbackRoute,

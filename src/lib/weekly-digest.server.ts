@@ -4,6 +4,7 @@ import {
 	alertRules,
 	alerts,
 	member,
+	notificationPrefs,
 	organization,
 	pullRequests,
 	repos,
@@ -61,13 +62,24 @@ async function getWeeklyStats(organizationId: string): Promise<WeeklyStats> {
 	};
 }
 
+/** Members' emails, minus anyone who turned off "Weekly digest" in their notification settings. */
 async function getOrgMemberEmails(organizationId: string): Promise<string[]> {
 	const rows = await db
-		.select({ email: user.email })
+		.select({ email: user.email, optOut: notificationPrefs.enabled })
 		.from(member)
 		.innerJoin(user, eq(member.userId, user.id))
+		.leftJoin(
+			notificationPrefs,
+			and(
+				eq(notificationPrefs.userId, member.userId),
+				eq(notificationPrefs.pref, "weekly_summary"),
+			),
+		)
 		.where(eq(member.organizationId, organizationId));
-	return Array.from(new Set(rows.map((r) => r.email)));
+	// The pref defaults to on: only an explicit `false` row opts out.
+	return Array.from(
+		new Set(rows.filter((r) => r.optOut !== false).map((r) => r.email)),
+	);
 }
 
 function renderDigestEmail(

@@ -157,6 +157,7 @@ function NotificationsCard() {
 								<p className="text-xs text-muted-foreground">{p.desc}</p>
 							</div>
 							<Switch
+								aria-label={p.label}
 								checked={p.enabled}
 								disabled={togglePref.isPending}
 								onCheckedChange={(enabled) =>

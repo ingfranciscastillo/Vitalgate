@@ -15,11 +15,11 @@ interface NotificationPrefMeta {
 }
 
 /**
- * critical_alerts and warning_alerts are honored by alert delivery
- * (alert-delivery.server.ts, which mirrors their defaultEnabled). The two
- * digest preferences are stored but not read by anything yet. Global per
- * user, not scoped to the active org: these read as personal preferences
- * ("email me"), not an org policy.
+ * Read by alert delivery (critical_alerts, warning_alerts), the weekly
+ * digest (weekly_summary) and the daily digest (daily_digest); each of those
+ * mirrors the defaultEnabled below. Global per user, not scoped to the
+ * active org: these read as personal preferences ("email me"), not an org
+ * policy.
  */
 const NOTIFICATION_PREFS: NotificationPrefMeta[] = [
 	{
@@ -37,14 +37,14 @@ const NOTIFICATION_PREFS: NotificationPrefMeta[] = [
 	{
 		key: "daily_digest",
 		label: "Daily PR digest",
-		desc: "No daily schedule exists yet — only the weekly digest (Settings > Alert rules) actually runs.",
+		desc: "Every morning, the pull requests audited in the last 24 hours. Pro workspaces.",
 		defaultEnabled: false,
 	},
 	{
 		key: "weekly_summary",
-		label: "Weekly performance summary",
-		desc: "Personal opt-out from the org's weekly digest, once that digest emails individually instead of one thread to every member.",
-		defaultEnabled: false,
+		label: "Weekly digest",
+		desc: "Your workspace's weekly summary, when an admin turns it on under Alerts. Pro workspaces.",
+		defaultEnabled: true,
 	},
 ];
 
