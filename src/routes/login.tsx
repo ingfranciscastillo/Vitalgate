@@ -77,6 +77,10 @@ function Login() {
 		const { error } = await authClient.signIn.social({
 			provider: "github",
 			callbackURL: redirectTo ?? "/dashboard",
+			// First sign-in: straight to connecting a repo, the step that gets
+			// them to a first audited PR, unless they came for something
+			// specific (an invitation link).
+			newUserCallbackURL: redirectTo ?? "/repositories/new",
 		});
 		if (error) setStatus("error");
 	};
