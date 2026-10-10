@@ -2,13 +2,10 @@ import {
 	ArrowLeftIcon,
 	BuildingsIcon,
 	CaretRightIcon,
-	CheckIcon,
 	GitBranchIcon,
 	GithubLogoIcon,
 	LockIcon,
 	MagnifyingGlassIcon,
-	ShieldCheckIcon,
-	StarIcon,
 } from "@phosphor-icons/react";
 import {
 	useMutation,
@@ -34,7 +31,6 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient } from "@/lib/auth-client";
 import { connectRepositories } from "@/lib/github.functions";
 import { connectableReposQueryOptions } from "@/lib/github.queries";
@@ -137,6 +133,7 @@ function ConnectRepo() {
 
 	const toggle = (id: string) =>
 		setSelected((s) => {
+			if (connectedRepos?.some((r) => r.githubRepoId === id)) return s;
 			if (s.includes(id)) return s.filter((x) => x !== id);
 			if (s.length >= remainingFree) {
 				setShowLimitDialog(true);
@@ -144,8 +141,6 @@ function ConnectRepo() {
 			}
 			return [...s, id];
 		});
-	const allFilteredSelected =
-		filtered.length > 0 && filtered.every((r) => selected.includes(r.id));
 
 	const queryClient = useQueryClient();
 	const connectMutation = useMutation({
@@ -224,13 +219,10 @@ function ConnectRepo() {
 				postComments,
 				startScript: startScript.trim() || undefined,
 				port: port.trim() ? Number(port) : undefined,
-				// Left empty, the server keeps a reconnected repo's existing names.
-				envVarNames: envVarNames.trim()
-					? envVarNames
-							.split(",")
-							.map((n) => n.trim())
-							.filter(Boolean)
-					: undefined,
+				envVarNames: envVarNames
+					.split(",")
+					.map((n) => n.trim())
+					.filter(Boolean),
 			},
 		});
 	};
@@ -280,420 +272,321 @@ function ConnectRepo() {
 		);
 	}
 
+	const connectedIds = new Set(connectedRepos?.map((r) => r.githubRepoId));
+	// Search and filters only earn their space once there are enough repos to
+	// look through; with a couple of repos they're just clutter.
+	const showSearch = available.length > 6;
+
 	return (
 		<AppShell title="Connect a repository">
 			<RepoLimitDialog
 				open={showLimitDialog}
 				onOpenChange={setShowLimitDialog}
 			/>
-			<div className="mb-6">
+			<div className="mx-auto max-w-3xl">
 				<Link
 					to="/repositories"
 					className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
 				>
 					<ArrowLeftIcon className="h-3.5 w-3.5" /> Back to repositories
 				</Link>
-				<div className="mt-3 flex flex-wrap items-end justify-between gap-3">
-					<div>
-						<h1 className="text-2xl font-semibold tracking-tight">
-							Connect a repository
-						</h1>
-						<p className="text-sm text-muted-foreground mt-1">
-							Pick one or more repositories. Vitalgate will install the GitHub
-							App, fetch the baseline, and start auditing every PR.
-						</p>
-					</div>
-					<div className="flex items-center gap-2 text-xs text-muted-foreground">
-						<ShieldCheckIcon className="h-4 w-4 text-primary" /> Minimum-scope
-						GitHub App
-					</div>
+				<div className="mt-3 mb-6">
+					<p className="text-sm text-muted-foreground">
+						Vitalgate adds a workflow that audits every pull request with
+						Lighthouse and checks it against your budgets.
+					</p>
 				</div>
-			</div>
 
-			<Tabs defaultValue="github" className="">
-				<TabsList>
-					<TabsTrigger value="github">
-						<GithubLogoIcon className="h-3.5 w-3.5 mr-1.5" /> From GitHub
-					</TabsTrigger>
-					<TabsTrigger value="url">From URL</TabsTrigger>
-				</TabsList>
-
-				<TabsContent value="github" className="mt-6">
-					<div className="grid lg:grid-cols-[1fr_360px] gap-6">
-						<div className="space-y-4">
-							<Card className="p-4">
-								<div className="flex flex-wrap items-center gap-2">
-									<Select value={org} onValueChange={setOrg}>
-										<SelectTrigger className="w-50">
-											<BuildingsIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-											<SelectValue placeholder="All organizations" />
-										</SelectTrigger>
-										<SelectContent>
-											<SelectItem value="all">All organizations</SelectItem>
-											{orgs.map((o) => (
-												<SelectItem key={o} value={o}>
-													{o}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<div className="relative flex-1 min-w-55">
-										<MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-										<Input
-											placeholder="Search repositories"
-											value={query}
-											onChange={(e) => setQuery(e.target.value)}
-											className="pl-8"
-										/>
-									</div>
-									<Button
-										variant="outline"
-										size="sm"
-										onClick={() => {
-											if (allFilteredSelected) {
-												setSelected((s) =>
-													s.filter((id) => !filtered.some((r) => r.id === id)),
-												);
-											} else {
-												setSelected((s) => {
-													const merged = Array.from(
-														new Set([...s, ...filtered.map((r) => r.id)]),
-													);
-													if (merged.length > remainingFree) {
-														setShowLimitDialog(true);
-														return merged.slice(0, remainingFree);
-													}
-													return merged;
-												});
-											}
-										}}
-									>
-										{allFilteredSelected ? "Clear" : "Select all"}
-									</Button>
+				<div className="space-y-4">
+					<Card className="p-0 overflow-hidden">
+						<div className="flex flex-wrap items-center gap-2 border-b border-border px-5 py-3">
+							<h2 className="mr-auto text-sm font-semibold">Repositories</h2>
+							{orgs.length > 1 && (
+								<Select value={org} onValueChange={setOrg}>
+									<SelectTrigger className="h-8 w-44">
+										<BuildingsIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+										<SelectValue placeholder="All accounts" />
+									</SelectTrigger>
+									<SelectContent>
+										<SelectItem value="all">All accounts</SelectItem>
+										{orgs.map((o) => (
+											<SelectItem key={o} value={o}>
+												{o}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							)}
+							{showSearch && (
+								<div className="relative w-full sm:w-56">
+									<MagnifyingGlassIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+									<Input
+										placeholder="Search repositories"
+										value={query}
+										onChange={(e) => setQuery(e.target.value)}
+										className="h-8 pl-8"
+									/>
 								</div>
-							</Card>
+							)}
+						</div>
 
-							<Card className="p-0 overflow-hidden">
-								<motion.ul
-									className="divide-y divide-border"
-									variants={staggerContainer}
-									initial="hidden"
-									animate="show"
-								>
-									{filtered.length === 0 && (
-										<li className="px-5 py-10 text-center text-sm text-muted-foreground">
-											No repositories match "{query}".
-										</li>
-									)}
-									<AnimatePresence mode="popLayout">
-										{filtered.map((r) => {
-											const checked = selected.includes(r.id);
-											return (
-												<motion.li
-													key={r.id}
-													variants={staggerItem(reduce)}
-													exit={{
-														opacity: 0,
-														height: 0,
-														transition: { duration: 0.15, ease: EASE_IN },
-													}}
-													className="overflow-hidden"
-												>
-													{/*
-													 * biome-ignore lint/a11y/noStaticElementInteractions: mouse-only row convenience
-													 * biome-ignore lint/a11y/useKeyWithClickEvents: the Checkbox below is independently focusable and keyboard-operable
-													 */}
-													<div
-														className={`flex items-center gap-4 px-5 py-3.5 cursor-pointer transition-colors ${
-															checked
-																? "bg-primary/5"
-																: !checked && atLimit
-																	? "opacity-50 hover:bg-transparent"
-																	: "hover:bg-muted/30"
-														}`}
-														onClick={() => toggle(r.id)}
-													>
-														<Checkbox
-															checked={checked}
-															disabled={!checked && atLimit}
-															onCheckedChange={() => toggle(r.id)}
-															onClick={(e) => e.stopPropagation()}
-														/>
-														<div className="flex-1 min-w-0">
-															<div className="flex items-center gap-2">
-																<span className="font-medium font-mono text-sm truncate">
-																	{r.fullName}
-																</span>
-																{r.private ? (
-																	<span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
-																		<LockIcon className="h-2.5 w-2.5" /> private
-																	</span>
-																) : (
-																	<span className="rounded-full bg-primary/10 text-primary px-1.5 py-0.5 text-[10px]">
-																		public
-																	</span>
-																)}
-															</div>
-															<div className="mt-0.5 flex items-center gap-3 text-[11px] text-muted-foreground font-mono">
-																<span className="inline-flex items-center gap-1">
-																	<GitBranchIcon className="h-3 w-3" />{" "}
-																	{r.defaultBranch}
-																</span>
-																<span>{r.language}</span>
-																{r.stars > 0 && (
-																	<span className="inline-flex items-center gap-1">
-																		<StarIcon className="h-3 w-3" /> {r.stars}
-																	</span>
-																)}
-																<span>updated {r.updated}</span>
-															</div>
-														</div>
-														{checked && (
-															<CheckIcon className="h-4 w-4 shrink-0 animate-badge-in text-primary" />
+						<motion.ul
+							className="max-h-[26rem] divide-y divide-border overflow-y-auto"
+							variants={staggerContainer}
+							initial="hidden"
+							animate="show"
+						>
+							{filtered.length === 0 && (
+								<li className="px-5 py-10 text-center text-sm text-muted-foreground">
+									{query
+										? `No repositories match "${query}".`
+										: "No repositories yet."}
+								</li>
+							)}
+							<AnimatePresence mode="popLayout">
+								{filtered.map((r) => {
+									const alreadyConnected = connectedIds.has(r.id);
+									const checked = selected.includes(r.id);
+									const disabled = alreadyConnected || (!checked && atLimit);
+									return (
+										<motion.li
+											key={r.id}
+											variants={staggerItem(reduce)}
+											exit={{
+												opacity: 0,
+												height: 0,
+												transition: { duration: 0.15, ease: EASE_IN },
+											}}
+											className="overflow-hidden"
+										>
+											<label
+												htmlFor={`repo-${r.id}`}
+												className={`flex items-center gap-4 px-5 py-3 transition-colors ${
+													alreadyConnected
+														? "cursor-default"
+														: checked
+															? "cursor-pointer bg-primary/5"
+															: disabled
+																? "cursor-not-allowed opacity-50"
+																: "cursor-pointer hover:bg-muted/30"
+												}`}
+											>
+												<Checkbox
+													id={`repo-${r.id}`}
+													checked={checked || alreadyConnected}
+													disabled={disabled}
+													onCheckedChange={() => toggle(r.id)}
+												/>
+												<div className="flex-1 min-w-0">
+													<div className="flex items-center gap-2">
+														<span className="truncate font-mono text-sm font-medium">
+															{r.fullName}
+														</span>
+														{r.private && (
+															<span className="inline-flex items-center gap-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+																<LockIcon className="h-2.5 w-2.5" /> private
+															</span>
 														)}
 													</div>
-												</motion.li>
-											);
-										})}
-									</AnimatePresence>
-								</motion.ul>
-								<div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
-									Don't see a repository?{" "}
-									<button
-										type="button"
-										className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-60"
-										disabled={openingGithub}
-										onClick={installGithubApp}
-									>
-										Give the GitHub App access to it
-									</button>
-								</div>
-							</Card>
+													<div className="mt-0.5 flex items-center gap-3 font-mono text-[11px] text-muted-foreground">
+														<span className="inline-flex items-center gap-1">
+															<GitBranchIcon className="h-3 w-3" />{" "}
+															{r.defaultBranch}
+														</span>
+														<span>{r.language}</span>
+														<span>updated {r.updated}</span>
+													</div>
+												</div>
+												{alreadyConnected && (
+													<span className="shrink-0 rounded-full bg-success/15 px-2 py-0.5 text-[10px] font-medium text-success">
+														Connected
+													</span>
+												)}
+											</label>
+										</motion.li>
+									);
+								})}
+							</AnimatePresence>
+						</motion.ul>
+						<div className="border-t border-border px-5 py-3 text-xs text-muted-foreground">
+							Don't see a repository?{" "}
+							<button
+								type="button"
+								className="font-medium text-foreground underline-offset-2 hover:underline disabled:opacity-60"
+								disabled={openingGithub}
+								onClick={installGithubApp}
+							>
+								Give the GitHub App access to it
+							</button>
+						</div>
+					</Card>
 
-							<div className="text-xs text-muted-foreground">
-								Don't see a repository?{" "}
-								<a href="#permissions" className="text-primary hover:underline">
-									Adjust GitHub App permissions
-								</a>
-								.
+					<Card className="p-5">
+						<h2 className="text-sm font-semibold">Budgets</h2>
+						<p className="mt-1 text-xs text-muted-foreground">
+							A starting point for every selected repository — edit them per
+							repository afterwards.
+						</p>
+						<div
+							role="radiogroup"
+							aria-label="Budget preset"
+							className="mt-4 grid gap-2 sm:grid-cols-2"
+						>
+							{PRESETS.map((p) => (
+								<label
+									key={p.id}
+									className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+										preset === p.id
+											? "border-primary bg-primary/5"
+											: "border-border hover:bg-muted/30"
+									}`}
+								>
+									<input
+										type="radio"
+										name="preset"
+										className="mt-1 accent-(--color-primary)"
+										checked={preset === p.id}
+										onChange={() => setPreset(p.id)}
+									/>
+									<div className="min-w-0">
+										<div className="flex items-center gap-2">
+											<span className="text-sm font-medium">{p.label}</span>
+											{p.recommended && (
+												<span className="rounded-full bg-primary/15 px-1.5 py-0.5 text-[10px] text-primary">
+													recommended
+												</span>
+											)}
+										</div>
+										<div className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+											{p.desc}
+										</div>
+									</div>
+								</label>
+							))}
+						</div>
+
+						<div className="mt-5 grid gap-3 border-t border-border pt-4 sm:grid-cols-2">
+							<div className="flex items-start gap-3">
+								<Checkbox
+									id="bp"
+									checked={branchProtect}
+									onCheckedChange={(v) => setBranchProtect(Boolean(v))}
+								/>
+								<div>
+									<Label htmlFor="bp" className="text-sm">
+										Fail the check on required budgets
+									</Label>
+									<p className="text-xs text-muted-foreground">
+										Mark it as required in GitHub to block merges. Unchecked,
+										every budget is a warning.
+									</p>
+								</div>
+							</div>
+							<div className="flex items-start gap-3">
+								<Checkbox
+									id="cm"
+									checked={postComments}
+									onCheckedChange={(v) => setPostComments(Boolean(v))}
+								/>
+								<div>
+									<Label htmlFor="cm" className="text-sm">
+										Post PR comments
+									</Label>
+									<p className="text-xs text-muted-foreground">
+										Each metric, its change and its budget, on the pull request.
+									</p>
+								</div>
 							</div>
 						</div>
 
-						<aside className="space-y-4">
-							<Card className="p-5">
-								<h2 className="font-semibold text-sm">Budget preset</h2>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Applied to every selected repo. You can edit per-repo later.
-								</p>
-								<div className="mt-4 space-y-2">
-									{PRESETS.map((p) => (
-										<label
-											key={p.id}
-											className={`flex items-start gap-3 rounded-md border p-3 cursor-pointer transition-colors ${
-												preset === p.id
-													? "border-primary bg-primary/5"
-													: "border-border hover:bg-muted/30"
-											}`}
-										>
-											<input
-												type="radio"
-												name="preset"
-												className="mt-1 accent-(--color-primary)"
-												checked={preset === p.id}
-												onChange={() => setPreset(p.id)}
-											/>
-											<div className="flex-1">
-												<div className="flex items-center gap-2">
-													<span className="text-sm font-medium">{p.label}</span>
-													{p.recommended && (
-														<span className="rounded-full bg-primary/15 text-primary px-1.5 py-0.5 text-[10px]">
-															recommended
-														</span>
-													)}
-												</div>
-												<div className="mt-0.5 text-[11px] text-muted-foreground font-mono">
-													{p.desc}
-												</div>
-											</div>
-										</label>
-									))}
-								</div>
-							</Card>
-
-							<Card className="p-5">
-								<h2 className="font-semibold text-sm">Options</h2>
-								<div className="mt-4 space-y-3">
-									<div className="flex items-start gap-3">
-										<Checkbox
-											id="bp"
-											checked={branchProtect}
-											onCheckedChange={(v) => setBranchProtect(Boolean(v))}
-										/>
-										<div>
-											<Label htmlFor="bp" className="text-sm">
-												Fail the check on required budgets
-											</Label>
-											<p className="text-xs text-muted-foreground">
-												Mark the Vitalgate check as required in GitHub to block
-												merges. Unchecked, every budget is a warning.
-											</p>
-										</div>
-									</div>
-									<div className="flex items-start gap-3">
-										<Checkbox
-											id="cm"
-											checked={postComments}
-											onCheckedChange={(v) => setPostComments(Boolean(v))}
-										/>
-										<div>
-											<Label htmlFor="cm" className="text-sm">
-												Post PR comments
-											</Label>
-											<p className="text-xs text-muted-foreground">
-												Inline metric diffs vs baseline.
-											</p>
-										</div>
-									</div>
-								</div>
-							</Card>
-
-							<Card className="p-5">
-								<h2 className="font-semibold text-sm">Serve command</h2>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Vitalgate detects a "start"/"preview"/"serve" script from each
-									repo's package.json automatically. Set these to override it
-									for every repository selected above.
-								</p>
-								<div className="mt-4 space-y-3">
-									<div className="space-y-1.5">
-										<Label htmlFor="start-script" className="text-sm">
-											Start command
-										</Label>
-										<Input
-											id="start-script"
-											placeholder="auto-detected (e.g. start, preview)"
-											value={startScript}
-											onChange={(e) => setStartScript(e.target.value)}
-											className="font-mono text-xs"
-										/>
-									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="port" className="text-sm">
-											Port
-										</Label>
-										<Input
-											id="port"
-											type="number"
-											placeholder="3000"
-											value={port}
-											onChange={(e) => setPort(e.target.value)}
-											className="font-mono text-xs"
-										/>
-									</div>
-								</div>
-							</Card>
-
-							<Card className="p-5">
-								<h2 className="font-semibold text-sm">Environment variables</h2>
-								<p className="mt-1 text-xs text-muted-foreground">
-									Comma-separated names of repo secrets the started server needs
-									to boot (e.g. a database URL) — not their values. Vitalgate
-									only stores the names; each becomes a{" "}
-									<code className="font-mono">secrets.NAME</code> reference in
-									the generated workflow, so the secret must already exist in
-									this repo's own GitHub settings. Leave it empty when
-									reconnecting to keep the names a repo already has.
-								</p>
-								<div className="mt-4 space-y-1.5">
-									<Label htmlFor="env-var-names" className="text-sm">
-										Secret names
+						<details className="group mt-4 border-t border-border pt-4">
+							<summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+								<CaretRightIcon className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+								Advanced: start command and secrets
+								<span className="text-xs font-normal text-muted-foreground">
+									— optional, usually auto-detected
+								</span>
+							</summary>
+							<div className="mt-4 grid gap-4 sm:grid-cols-[1fr_7rem]">
+								<div className="space-y-1.5">
+									<Label htmlFor="start-script" className="text-sm">
+										Start command
 									</Label>
 									<Input
-										id="env-var-names"
-										placeholder="DATABASE_URL, GROQ_API_KEY"
-										value={envVarNames}
-										onChange={(e) => setEnvVarNames(e.target.value)}
+										id="start-script"
+										placeholder="auto-detected (e.g. start, preview)"
+										value={startScript}
+										onChange={(e) => setStartScript(e.target.value)}
 										className="font-mono text-xs"
 									/>
 								</div>
-							</Card>
-
-							<Card
-								className={`p-5 bg-muted/30 ${shakeSummary ? "animate-shake" : ""}`}
-								onAnimationEnd={() => setShakeSummary(false)}
-							>
-								<div className="flex items-center justify-between text-sm">
-									<span className="text-muted-foreground">Selected</span>
-									<span className="font-mono font-semibold">
-										{selected.length}
-									</span>
+								<div className="space-y-1.5">
+									<Label htmlFor="port" className="text-sm">
+										Port
+									</Label>
+									<Input
+										id="port"
+										type="number"
+										placeholder="3000"
+										value={port}
+										onChange={(e) => setPort(e.target.value)}
+										className="font-mono text-xs"
+									/>
 								</div>
-								{!pro && (
-									<p className="mt-2 text-xs text-muted-foreground">
-										Free plan includes {FREE_REPO_LIMIT} repository —{" "}
-										{connectedCount} already connected.{" "}
-										{remainingFree === 0 && (
-											<Link
-												to="/pricing"
-												className="text-primary hover:underline"
-											>
-												Upgrade to Pro
-											</Link>
-										)}
-									</p>
-								)}
-								<Button
-									className="mt-4 w-full"
-									onClick={onConnect}
-									disabled={connectMutation.isPending}
-								>
-									{connectMutation.isPending
-										? "Connecting…"
-										: `Connect ${selected.length > 0 ? `${selected.length} ` : ""}repositor${selected.length === 1 ? "y" : "ies"}`}
-									{!connectMutation.isPending && (
-										<CaretRightIcon className="h-4 w-4 ml-1" />
-									)}
-								</Button>
-								<Link to="/repositories" className="mt-2 block">
-									<Button variant="ghost" className="w-full">
-										Cancel
-									</Button>
-								</Link>
-							</Card>
-						</aside>
-					</div>
-				</TabsContent>
-
-				<TabsContent value="url" className="mt-6">
-					<Card className="p-6 max-w-xl">
-						<h2 className="font-semibold">Connect by URL</h2>
-						<p className="text-sm text-muted-foreground mt-1">
-							Paste a public GitHub repository URL. Vitalgate will request
-							read-only access.
-						</p>
-						<div className="mt-5 space-y-2">
-							<Label htmlFor="url">Repository URL</Label>
-							<Input
-								id="url"
-								placeholder="https://github.com/acme/storefront"
-							/>
-						</div>
-						<div className="mt-5 flex justify-end gap-2">
-							<Link to="/repositories">
-								<Button variant="outline">Cancel</Button>
-							</Link>
-							<Button
-								onClick={() => {
-									toast.success("Repository connected");
-									navigate({ to: "/repositories" });
-								}}
-							>
-								Connect
-							</Button>
-						</div>
+							</div>
+							<div className="mt-4 space-y-1.5">
+								<Label htmlFor="env-var-names" className="text-sm">
+									Secret names
+								</Label>
+								<Input
+									id="env-var-names"
+									placeholder="DATABASE_URL, GROQ_API_KEY"
+									value={envVarNames}
+									onChange={(e) => setEnvVarNames(e.target.value)}
+									className="font-mono text-xs"
+								/>
+								<p className="text-xs text-muted-foreground">
+									Repository secrets your app needs to start, by name only —
+									they must already exist in the repo's GitHub settings.
+								</p>
+							</div>
+						</details>
 					</Card>
-				</TabsContent>
-			</Tabs>
+				</div>
+
+				{/* Always in reach, however long the repository list is. */}
+				<div
+					className={`sticky bottom-0 z-10 mt-4 flex flex-wrap items-center gap-3 border border-border bg-background/95 px-5 py-3 backdrop-blur ${shakeSummary ? "animate-shake" : ""}`}
+					onAnimationEnd={() => setShakeSummary(false)}
+				>
+					<div className="mr-auto text-sm">
+						<span className="font-mono font-semibold">{selected.length}</span>{" "}
+						<span className="text-muted-foreground">selected</span>
+						{!pro && (
+							<span className="ml-2 text-xs text-muted-foreground">
+								· Free plan: {FREE_REPO_LIMIT} repository ({connectedCount}{" "}
+								connected){" "}
+								{remainingFree === 0 && (
+									<Link to="/pricing" className="text-primary hover:underline">
+										Upgrade to Pro
+									</Link>
+								)}
+							</span>
+						)}
+					</div>
+					<Link to="/repositories">
+						<Button variant="ghost">Cancel</Button>
+					</Link>
+					<Button onClick={onConnect} disabled={connectMutation.isPending}>
+						{connectMutation.isPending
+							? "Connecting…"
+							: `Connect ${selected.length > 0 ? `${selected.length} ` : ""}repositor${selected.length === 1 ? "y" : "ies"}`}
+						{!connectMutation.isPending && (
+							<CaretRightIcon className="h-4 w-4 ml-1" />
+						)}
+					</Button>
+				</div>
+			</div>
 		</AppShell>
 	);
 }

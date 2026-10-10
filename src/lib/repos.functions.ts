@@ -6,11 +6,11 @@ import { ensureSession } from "@/lib/auth.functions";
 
 export interface RepoListItem {
 	id: string;
+	/** GitHub's numeric repo id, as text. */
+	githubRepoId: string;
 	fullName: string;
 	defaultBranch: string;
-	/** Total PRs Vitalgate has recorded for this repo. There's no GitHub webhook
-	 * ingestion yet, so this is always 0 until that exists — not "open" vs
-	 * "closed", since we don't track PR state at all yet. */
+	/** Total PRs Vitalgate has recorded audits for (it doesn't track whether they're open or closed). */
 	prCount: number;
 	lastRunAt: string | null;
 	/** Average Performance Score across recorded PRs, or null if there are none yet. */
@@ -28,6 +28,7 @@ export const getOrgRepos = createServerFn({ method: "GET" }).handler(
 		const rows = await db
 			.select({
 				id: repos.id,
+				githubRepoId: repos.githubRepoId,
 				fullName: repos.fullName,
 				defaultBranch: repos.defaultBranch,
 				prCount: count(pullRequests.id),
@@ -45,6 +46,7 @@ export const getOrgRepos = createServerFn({ method: "GET" }).handler(
 
 		return rows.map((r) => ({
 			id: r.id,
+			githubRepoId: r.githubRepoId,
 			fullName: r.fullName,
 			defaultBranch: r.defaultBranch,
 			prCount: Number(r.prCount),

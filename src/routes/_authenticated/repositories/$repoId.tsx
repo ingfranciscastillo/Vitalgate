@@ -37,6 +37,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDelivery, timeAgo } from "@/lib/format";
 import {
 	disconnectRepository,
+	regenerateRepoWorkflow,
 	updateRepoEnvVars,
 } from "@/lib/github.functions";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
@@ -97,6 +98,29 @@ function RepoDetail() {
 			}
 		},
 		onError: () => toast.error("Could not update environment variables"),
+	});
+
+	const regenerate = useMutation({
+		mutationFn: regenerateRepoWorkflow,
+		onSuccess: (result) => {
+			if (result.status === "error") {
+				toast.error(`Couldn't update the workflow: ${result.message}`);
+			} else if (result.status === "already-exists") {
+				toast.error(
+					"A workflow Vitalgate didn't generate already exists at that path. Remove or rename it first.",
+				);
+			} else {
+				toast.success(
+					result.status === "created" ? "Workflow added" : "Workflow updated",
+				);
+			}
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error
+					? err.message
+					: "Could not regenerate the workflow",
+			),
 	});
 
 	const setPrComments = useMutation({
@@ -462,6 +486,30 @@ function RepoDetail() {
 										}
 										aria-label="Post results as a pull request comment"
 									/>
+								</div>
+							</Card>
+							<Card className="p-5">
+								<div className="flex flex-wrap items-start justify-between gap-4">
+									<div>
+										<h2 className="font-semibold text-sm">Workflow</h2>
+										<p className="mt-1 text-xs text-muted-foreground">
+											Recommit{" "}
+											<code className="font-mono">
+												.github/workflows/vitalgate.yml
+											</code>{" "}
+											from the latest template and this repository's settings.
+										</p>
+									</div>
+									<Button
+										size="sm"
+										variant="outline"
+										disabled={regenerate.isPending}
+										onClick={() => regenerate.mutate({ data: repoId })}
+									>
+										{regenerate.isPending
+											? "Regenerating…"
+											: "Regenerate workflow"}
+									</Button>
 								</div>
 							</Card>
 							<Card className="p-5">
