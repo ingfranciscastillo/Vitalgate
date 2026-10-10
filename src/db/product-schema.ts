@@ -210,6 +210,17 @@ export const cruxReports = pgTable("crux_reports", {
 	fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
 });
 
+/**
+ * Chrome UX Report answers for the public Core Web Vitals checker, keyed by
+ * "<origin>|<form factor>", reused for a day so repeat lookups don't spend
+ * the shared CrUX quota. `snapshot` is null when CrUX has no data.
+ */
+export const cruxOriginCache = pgTable("crux_origin_cache", {
+	key: text("key").primaryKey(),
+	snapshot: jsonb("snapshot").$type<CruxSnapshot>(),
+	fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
+
 export const reposRelations = relations(repos, ({ many, one }) => ({
 	organization: one(organization, {
 		fields: [repos.organizationId],

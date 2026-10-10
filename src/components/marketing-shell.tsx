@@ -23,6 +23,9 @@ export function MarketingShell({ children }: { children: ReactNode }) {
 						<Link to="/pricing" className={linkUnderline}>
 							Pricing
 						</Link>
+						<Link to="/tools/core-web-vitals" className={linkUnderline}>
+							Web Vitals checker
+						</Link>
 						<a href="/#faq" className={linkUnderline}>
 							FAQ
 						</a>
@@ -75,6 +78,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
 									className={`${linkUnderline} text-foreground/80`}
 								>
 									Pricing
+								</Link>
+								<Link
+									to="/tools/core-web-vitals"
+									className={`${linkUnderline} text-foreground/80`}
+								>
+									Core Web Vitals checker
 								</Link>
 								<Link
 									to="/login"

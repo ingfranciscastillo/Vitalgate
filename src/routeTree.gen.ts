@@ -22,6 +22,7 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation/$invitationId'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ToolsCoreWebVitalsRouteImport } from './routes/tools/core-web-vitals'
 import { Route as AuthenticatedPullsIndexRouteImport } from './routes/_authenticated/pulls/index'
 import { Route as AuthenticatedPullsPrIdRouteImport } from './routes/_authenticated/pulls/$prId'
 import { Route as AuthenticatedRepositoriesIndexRouteImport } from './routes/_authenticated/repositories/index'
@@ -98,6 +99,11 @@ const AcceptInvitationInvitationIdRoute =
 const ApiIngestRoute = ApiIngestRouteImport.update({
   id: '/api/ingest',
   path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsCoreWebVitalsRoute = ToolsCoreWebVitalsRouteImport.update({
+  id: '/tools/core-web-vitals',
+  path: '/tools/core-web-vitals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPullsIndexRoute = AuthenticatedPullsIndexRouteImport.update({
@@ -179,6 +185,7 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -233,6 +241,7 @@ export interface FileRoutesById {
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/_authenticated/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/_authenticated/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/_authenticated/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -261,6 +270,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/tools/core-web-vitals'
     | '/pulls/$prId'
     | '/repositories/$repoId'
     | '/repositories/new'
@@ -287,6 +297,7 @@ export interface FileRouteTypes {
     | '/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/tools/core-web-vitals'
     | '/pulls/$prId'
     | '/repositories/$repoId'
     | '/repositories/new'
@@ -314,6 +325,7 @@ export interface FileRouteTypes {
     | '/_authenticated/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/tools/core-web-vitals'
     | '/_authenticated/pulls/$prId'
     | '/_authenticated/repositories/$repoId'
     | '/_authenticated/repositories/new'
@@ -338,6 +350,7 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiIngestRoute: typeof ApiIngestRoute
+  ToolsCoreWebVitalsRoute: typeof ToolsCoreWebVitalsRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronDailyDigestRoute: typeof ApiCronDailyDigestRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
@@ -438,6 +451,13 @@ declare module '@tanstack/react-router' {
       path: '/api/ingest'
       fullPath: '/api/ingest'
       preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/core-web-vitals': {
+      id: '/tools/core-web-vitals'
+      path: '/tools/core-web-vitals'
+      fullPath: '/tools/core-web-vitals'
+      preLoaderRoute: typeof ToolsCoreWebVitalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated/pulls/': {
@@ -565,6 +585,7 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiIngestRoute: ApiIngestRoute,
+  ToolsCoreWebVitalsRoute: ToolsCoreWebVitalsRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronDailyDigestRoute: ApiCronDailyDigestRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,

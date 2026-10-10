@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+	assessCoreWebVitals,
 	cruxRating,
 	parseCruxHistory,
 	parseCruxRecord,
+	suggestBudgets,
 	toOrigin,
 } from "@/lib/crux";
 
@@ -87,5 +89,28 @@ describe("toOrigin", () => {
 		);
 		expect(toOrigin("http://example.com")).toBeNull();
 		expect(toOrigin("example.com")).toBeNull();
+	});
+});
+
+describe("assessCoreWebVitals", () => {
+	it("passes only when every available vital is good", () => {
+		expect(assessCoreWebVitals({ LCP: 2000, CLS: 0.05, INP: 150 })).toBe(
+			"passed",
+		);
+		expect(assessCoreWebVitals({ LCP: 2000, CLS: 0.05 })).toBe("passed");
+		expect(assessCoreWebVitals({ LCP: 2000, CLS: 0.05, INP: 250 })).toBe(
+			"failed",
+		);
+		expect(assessCoreWebVitals({ INP: 150 })).toBe("insufficient");
+	});
+});
+
+describe("suggestBudgets", () => {
+	it("holds the good line, or today's p75 rounded up", () => {
+		expect(suggestBudgets({ LCP: 1900, CLS: 0.137, FCP: 2340 })).toEqual([
+			{ metric: "LCP", max: 2500, reason: "keep-good" },
+			{ metric: "CLS", max: 0.14, reason: "hold" },
+			{ metric: "FCP", max: 2400, reason: "hold" },
+		]);
 	});
 });

@@ -148,3 +148,55 @@ export function toOrigin(url: string): string | null {
 		return null;
 	}
 }
+
+/** Device split CrUX can report; null means all devices combined. */
+export type CruxFormFactor = "PHONE" | "DESKTOP";
+
+/**
+ * Google's Core Web Vitals assessment: passed when LCP, CLS and (if CrUX
+ * has it) INP are all good at p75. Without LCP or CLS there isn't enough
+ * data to assess.
+ */
+export function assessCoreWebVitals(
+	metrics: CruxSnapshot["metrics"],
+): "passed" | "failed" | "insufficient" {
+	const { LCP, CLS, INP } = metrics;
+	if (LCP == null || CLS == null) return "insufficient";
+	const good =
+		cruxRating("LCP", LCP) === "good" &&
+		cruxRating("CLS", CLS) === "good" &&
+		(INP == null || cruxRating("INP", INP) === "good");
+	return good ? "passed" : "failed";
+}
+
+export interface SuggestedBudget {
+	metric: "LCP" | "CLS" | "FCP";
+	max: number;
+	/** "keep-good": already good, the budget holds the "good" line. "hold": not good yet, the budget stops it getting worse. */
+	reason: "keep-good" | "hold";
+}
+
+/**
+ * Starting pull request budgets from a site's real-user p75s, for the
+ * metrics Vitalgate's Lighthouse runs measure: the "good" threshold where
+ * the site already meets it, otherwise today's p75 rounded up, so new PRs
+ * can't make it worse.
+ */
+export function suggestBudgets(
+	metrics: CruxSnapshot["metrics"],
+): SuggestedBudget[] {
+	const roundUp = (metric: SuggestedBudget["metric"], value: number) =>
+		metric === "CLS"
+			? Math.ceil(value * 100) / 100
+			: Math.ceil(value / 100) * 100;
+	return (["LCP", "CLS", "FCP"] as const).flatMap(
+		(metric): SuggestedBudget[] => {
+			const p75 = metrics[metric];
+			if (p75 == null) return [];
+			const good = CRUX_THRESHOLDS[metric].good;
+			return p75 <= good
+				? [{ metric, max: good, reason: "keep-good" }]
+				: [{ metric, max: roundUp(metric, p75), reason: "hold" }];
+		},
+	);
+}

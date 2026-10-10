@@ -1,5 +1,6 @@
 import {
 	CRUX_METRIC_NAMES,
+	type CruxFormFactor,
 	type CruxSnapshot,
 	parseCruxHistory,
 	parseCruxRecord,
@@ -22,19 +23,22 @@ async function query(endpoint: string, body: object): Promise<Response> {
 }
 
 /**
- * The Chrome UX Report for an origin, across all devices: the current p75s
+ * The Chrome UX Report for an origin, across all devices unless a
+ * `formFactor` is given: the current p75s
  * plus their weekly history. Null when CrUX has no data for it — the site
  * doesn't get enough Chrome traffic, or isn't public. Throws on any other
  * failure (bad key, quota, network) so the caller doesn't cache it.
  */
 export async function fetchCruxSnapshot(
 	origin: string,
+	formFactor?: CruxFormFactor,
 ): Promise<CruxSnapshot | null> {
 	const metrics = Object.values(CRUX_METRIC_NAMES);
 	const [current, history] = await Promise.all([
-		query("queryRecord", { origin, metrics }),
+		query("queryRecord", { origin, formFactor, metrics }),
 		query("queryHistoryRecord", {
 			origin,
+			formFactor,
 			metrics: [
 				CRUX_METRIC_NAMES.INP,
 				CRUX_METRIC_NAMES.LCP,
