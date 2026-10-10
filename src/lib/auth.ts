@@ -31,11 +31,9 @@ export const auth = betterAuth({
 		disableSignUp: true,
 	},
 	account: {
-		// The stored GitHub OAuth token is identity-only now (see the scopes
-		// below), but accounts that signed in before repo access moved to the
-		// GitHub App may still hold a token with `repo` + `workflow`. Encrypted
-		// at rest; read it only through auth.api.getAccessToken, never from the
-		// account table directly.
+		// The stored GitHub OAuth token (identity-only, see the scopes below) is
+		// encrypted at rest; read it only through auth.api.getAccessToken, never
+		// from the account table directly.
 		encryptOAuthTokens: true,
 	},
 	socialProviders: {

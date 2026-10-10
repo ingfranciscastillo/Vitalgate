@@ -363,7 +363,6 @@ async function handleIngest(request: Request) {
 	// or if that fails, the workflow posts it with its own token.
 	const postedByApp =
 		comment !== null &&
-		repo.installationId !== null &&
 		(await upsertPrCommentAsApp({
 			installationId: repo.installationId,
 			repoFullName: repo.fullName,

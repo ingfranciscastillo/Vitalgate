@@ -1,0 +1,1 @@
+ALTER TABLE "repos" ALTER COLUMN "installation_id" SET NOT NULL;

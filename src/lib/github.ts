@@ -211,46 +211,27 @@ export type CommitWorkflowResult =
 /**
  * First line of every workflow Vitalgate generates. Lets commitWorkflowFile
  * tell "a file we generated, safe to regenerate on reconnect" apart from "the
- * user wrote their own workflow at this path, don't touch it" — without this
- * marker there'd be no way to support disconnect+reconnect picking up a
- * template change without also risking clobbering a hand-written file.
- *
- * Files generated before a rename carry an older marker (see
- * LEGACY_WORKFLOW_MARKERS) and are still treated as ours.
+ * user wrote their own workflow at this path, don't touch it".
  */
 export const WORKFLOW_MANAGED_MARKER = "# Managed by Vitalgate.";
 
-/** Markers from before the Budgetly → Vitalgate rename — still ours, safe to regenerate. */
-const LEGACY_WORKFLOW_MARKERS = ["# Managed by Budgetly."];
-
-function isManagedWorkflow(content: string): boolean {
-	return [WORKFLOW_MANAGED_MARKER, ...LEGACY_WORKFLOW_MARKERS].some((marker) =>
-		content.startsWith(marker),
-	);
-}
+/** Where the workflow lives in a connected repo. */
+const WORKFLOW_PATH = ".github/workflows/vitalgate.yml";
 
 /**
- * Commits the Vitalgate GitHub Action workflow to a repo, at
- * .github/workflows/budgetly.yml — the path deliberately doesn't track the
- * product's own name (kept from before the Budgetly → Vitalgate rename): a
- * changed path would leave the old file behind uncleaned, and GitHub runs
- * every workflow file it finds, so a stale one would silently keep firing
- * alongside the new one. The commit is authored by whoever the token belongs
- * to: the GitHub App with an installation token, or the user with their
- * OAuth token (repos connected before the app). If a file already exists at
- * that path:
- * overwrites it when it's one Vitalgate generated before (carries
- * WORKFLOW_MANAGED_MARKER — this is how disconnecting and reconnecting a repo
- * picks up template changes), otherwise leaves it alone so a user's own
- * hand-written workflow is never silently clobbered.
+ * Commits the Vitalgate GitHub Action workflow to a repo at WORKFLOW_PATH,
+ * authored by the GitHub App (installation token). If a file already exists
+ * there: overwrites it when it's one Vitalgate generated before (carries
+ * WORKFLOW_MANAGED_MARKER — this is how reconnecting a repo picks up
+ * template changes), otherwise leaves it alone so a user's own hand-written
+ * workflow is never silently clobbered.
  */
 export async function commitWorkflowFile(
 	accessToken: string,
 	fullName: string,
 	content: string,
 ): Promise<CommitWorkflowResult> {
-	const path = ".github/workflows/budgetly.yml";
-	const url = `https://api.github.com/repos/${fullName}/contents/${path}`;
+	const url = `https://api.github.com/repos/${fullName}/contents/${WORKFLOW_PATH}`;
 	const headers = {
 		Authorization: `Bearer ${accessToken}`,
 		Accept: "application/vnd.github+json",
@@ -269,7 +250,7 @@ export async function commitWorkflowFile(
 			file.encoding === "base64"
 				? Buffer.from(file.content, "base64").toString("utf8")
 				: "";
-		if (!isManagedWorkflow(existingContent)) {
+		if (!existingContent.startsWith(WORKFLOW_MANAGED_MARKER)) {
 			return { status: "already-exists" };
 		}
 		existingSha = file.sha;
@@ -314,8 +295,7 @@ export async function deleteWorkflowFile(
 	accessToken: string,
 	fullName: string,
 ): Promise<void> {
-	const path = ".github/workflows/budgetly.yml";
-	const url = `https://api.github.com/repos/${fullName}/contents/${path}`;
+	const url = `https://api.github.com/repos/${fullName}/contents/${WORKFLOW_PATH}`;
 	const headers = {
 		Authorization: `Bearer ${accessToken}`,
 		Accept: "application/vnd.github+json",
