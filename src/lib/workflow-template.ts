@@ -176,6 +176,7 @@ ${forwardedEnv}        run: |
           PR_TITLE: \${{ github.event.pull_request.title }}
           PR_AUTHOR: \${{ github.event.pull_request.user.login }}
           PR_BRANCH: \${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: \${{ github.event.pull_request.head.sha }}
           GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           node -e '
@@ -241,6 +242,7 @@ ${forwardedEnv}        run: |
                 prTitle: process.env.PR_TITLE,
                 prAuthor: process.env.PR_AUTHOR,
                 branch: process.env.PR_BRANCH,
+                headSha: process.env.PR_HEAD_SHA,
                 metrics,
               }),
             });
@@ -253,7 +255,9 @@ ${forwardedEnv}        run: |
             await upsertComment(body.comment);
             if (body.status === "failing") {
               console.error("Vitalgate: a required performance budget was violated.");
-              process.exit(1);
+              // The "Vitalgate" check already reports the failure; only fail
+              // this job when that check could not be created.
+              if (!body.checkRun) process.exit(1);
             }
           })();
           '

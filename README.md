@@ -20,7 +20,7 @@
 Vitalgate runs Lighthouse on every GitHub pull request, compares the results against the repository's performance budgets, and fails the PR check when a change breaks a required budget. Results are posted on the pull request, and alerts go out by email, Slack or Discord.
 
 - **Budgets per repository** for LCP, CLS, FCP, TBT and the Lighthouse performance score, each one *required* (fails the check) or a *warning*.
-- **Results on the pull request**: one comment per PR, updated on every push, with each metric, its change against the baseline and its budget.
+- **Results on the pull request**: a *Vitalgate* check (make it required to block merges) and one comment per PR, updated on every push, with each metric, its change against the baseline and its budget.
 - **Alerts** for budget violations, 3‑day regressions and a falling workspace score — by email, Slack or Discord — plus daily and weekly digests.
 - **Workspaces** with owners, admins and view-only members, invitations, and per-workspace plans (Free: 1 repository; Pro: unlimited, Slack/Discord, extra rules, digests, more workspaces).
 - **Least-privilege GitHub access** through a GitHub App installed only on the repositories you pick. Sign-in itself only reads your GitHub identity.
@@ -41,8 +41,8 @@ sequenceDiagram
     A->>G: Request an OIDC token for this run
     A->>V: POST /api/ingest with metrics + OIDC token
     V->>V: Verify token → repo & PR, check budgets, record alerts
-    V->>G: Comment results on the PR (as the app)
-    V-->>A: status (failing → the check fails)
+    V->>G: Create the Vitalgate check + comment on the PR (as the app)
+    V-->>A: status
 ```
 
 Audits run on **your own** GitHub Actions runner: Vitalgate never builds or hosts your app. The workflow proves which repository and pull request it reports for with a short-lived token signed by GitHub (OIDC), so there is no secret to copy into each repository.

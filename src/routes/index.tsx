@@ -566,7 +566,7 @@ function Faq() {
 		},
 		{
 			q: "What happens when a PR fails a budget?",
-			a: "If a required budget fails, the Vitalgate check fails. Mark it as required in your branch protection rules and the PR can't be merged. Warnings show up in the PR comment without failing the check.",
+			a: 'If a required budget fails, the "Vitalgate" check on the pull request fails, with the results in its summary. Make that check required in your branch protection rules and the PR can\'t be merged. Warnings pass the check and show up in its summary and the PR comment.',
 		},
 	];
 	return (

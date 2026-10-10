@@ -486,8 +486,8 @@ function ConnectRepo() {
 											Fail the check on required budgets
 										</Label>
 										<p className="text-xs text-muted-foreground">
-											Mark it as required in GitHub to block merges. Unchecked,
-											every budget is a warning.
+											Require the “Vitalgate” check in GitHub to block merges.
+											Unchecked, every budget is a warning.
 										</p>
 									</div>
 								</div>

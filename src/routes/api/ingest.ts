@@ -12,6 +12,7 @@ import {
 import { deliverAlerts } from "@/lib/alert-delivery.server";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import { getAppUrl } from "@/lib/app-url.server";
+import { createCheckRun } from "@/lib/github-check-run.server";
 import {
 	pullNumberFromRef,
 	verifyGithubOidcToken,
@@ -44,6 +45,11 @@ const ingestBodySchema = z.object({
 	prAuthor: z.string().min(1).max(39),
 	branch: z.string().min(1).max(255),
 	metrics: metricsSchema,
+	/** The pull request's head commit, which the "Vitalgate" check is attached to. */
+	headSha: z
+		.string()
+		.regex(/^[0-9a-f]{40}$/)
+		.optional(),
 });
 
 const ALL_METRICS: MetricKey[] = ["LCP", "INP", "CLS", "FCP", "TBT", "PERF"];
@@ -350,18 +356,33 @@ async function handleIngest(request: Request) {
 		}
 	}
 
-	// The workflow posts this on the pull request (see workflow-template.ts),
-	// so its wording can improve without regenerating every repo's workflow.
-	const comment = !repo.postPrComments
-		? null
-		: renderPrComment({
-				status,
-				metrics: body.metrics,
-				baseline: pull.baseline,
-				budgets: budgetRows,
-				reportUrl: `${getAppUrl()}/pulls/${pull.id}`,
-				isFirstRun: !lastRun,
-			});
+	// One results table, rendered here so its wording can improve without
+	// regenerating every repo's workflow: the check's summary, and the PR
+	// comment when the repo has comments on.
+	const reportUrl = `${getAppUrl()}/pulls/${pull.id}`;
+	const results = renderPrComment({
+		status,
+		metrics: body.metrics,
+		baseline: pull.baseline,
+		budgets: budgetRows,
+		reportUrl,
+		isFirstRun: !lastRun,
+	});
+	const comment = repo.postPrComments ? results : null;
+
+	// The "Vitalgate" check carries pass/fail. When it's in place the
+	// workflow job doesn't fail on budgets (see workflow-template.ts), so a
+	// red job only ever means the audit itself broke.
+	const checkRun =
+		body.headSha !== undefined &&
+		(await createCheckRun({
+			installationId: repo.installationId,
+			repoFullName: repo.fullName,
+			headSha: body.headSha,
+			status,
+			summary: results,
+			detailsUrl: reportUrl,
+		}));
 
 	// With the GitHub App, Vitalgate posts the comment itself (as the app,
 	// and on fork PRs too) and the workflow gets nothing to post. Without it,
@@ -375,7 +396,12 @@ async function handleIngest(request: Request) {
 			body: comment,
 		}));
 
-	return json({ status, violations, comment: postedByApp ? null : comment });
+	return json({
+		status,
+		violations,
+		comment: postedByApp ? null : comment,
+		checkRun,
+	});
 }
 
 export const Route = createFileRoute("/api/ingest")({
