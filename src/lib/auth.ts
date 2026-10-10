@@ -8,6 +8,7 @@ import * as schema from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
+import { sendWelcomeEmail } from "@/lib/lifecycle.server";
 import { isAdminRole } from "@/lib/roles";
 
 function slugify(input: string) {
@@ -66,6 +67,7 @@ export const auth = betterAuth({
 							userId: user.id,
 						},
 					});
+					await sendWelcomeEmail(user);
 				},
 			},
 		},

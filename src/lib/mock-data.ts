@@ -102,7 +102,8 @@ export type NotificationPrefKey =
 	| "critical_alerts"
 	| "warning_alerts"
 	| "daily_digest"
-	| "weekly_summary";
+	| "weekly_summary"
+	| "getting_started";
 export type IntegrationProvider = "slack" | "discord";
 
 export interface AlertItem {

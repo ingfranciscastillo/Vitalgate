@@ -16,7 +16,8 @@ interface NotificationPrefMeta {
 
 /**
  * Read by alert delivery (critical_alerts, warning_alerts), the weekly
- * digest (weekly_summary) and the daily digest (daily_digest); each of those
+ * digest (weekly_summary), the daily digest (daily_digest) and the
+ * onboarding reminders (getting_started, lifecycle.server.ts); each of those
  * mirrors the defaultEnabled below. Global per user, not scoped to the
  * active org: these read as personal preferences ("email me"), not an org
  * policy.
@@ -44,6 +45,12 @@ const NOTIFICATION_PREFS: NotificationPrefMeta[] = [
 		key: "weekly_summary",
 		label: "Weekly digest",
 		desc: "Your workspace's weekly summary, when an admin turns it on under Alerts. Pro workspaces.",
+		defaultEnabled: true,
+	},
+	{
+		key: "getting_started",
+		label: "Getting started tips",
+		desc: "Up to two reminders while you connect your first repository and open your first pull request.",
 		defaultEnabled: true,
 	},
 ];

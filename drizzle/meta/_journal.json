@@ -148,6 +148,13 @@
       "when": 1791613178276,
       "tag": "0020_icy_inhumans",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791617382258,
+      "tag": "0021_lame_living_mummy",
+      "breakpoints": true
     }
   ]
 }

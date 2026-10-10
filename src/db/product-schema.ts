@@ -221,6 +221,16 @@ export const cruxOriginCache = pgTable("crux_origin_cache", {
 	fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
 });
 
+/**
+ * Lifecycle emails already sent, one row per email per recipient (e.g.
+ * "welcome:<userId>", "pr-nudge:<orgId>:<userId>"), so each goes out at
+ * most once. Claimed before sending and released if the send fails.
+ */
+export const lifecycleEmails = pgTable("lifecycle_emails", {
+	key: text("key").primaryKey(),
+	sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
 export const reposRelations = relations(repos, ({ many, one }) => ({
 	organization: one(organization, {
 		fields: [repos.organizationId],

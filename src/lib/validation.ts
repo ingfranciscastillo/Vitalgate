@@ -31,6 +31,7 @@ export const notificationPrefKeySchema = z.enum([
 	"warning_alerts",
 	"daily_digest",
 	"weekly_summary",
+	"getting_started",
 ]) satisfies z.ZodType<NotificationPrefKey>;
 
 /** Names of repo secrets forwarded to the audit; sanitized again before use. */

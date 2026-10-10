@@ -22,6 +22,7 @@ import {
 	findOpenPullForCommit,
 	type PullForCommit,
 } from "@/lib/github-pull-for-commit.server";
+import { sendFirstAuditEmailIfFirst } from "@/lib/lifecycle.server";
 import type {
 	AlertRuleKey,
 	MetricKey,
@@ -440,6 +441,15 @@ async function handleIngest(request: Request) {
 			prNumber: prNumber,
 			body: comment,
 		}));
+
+	// Only does anything on the workspace's very first audit (sent once).
+	await sendFirstAuditEmailIfFirst({
+		organizationId,
+		repoFullName: repo.fullName,
+		prNumber,
+		pullId: pull.id,
+		status,
+	});
 
 	return json({
 		status,
