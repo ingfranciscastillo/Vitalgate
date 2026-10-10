@@ -1,41 +1,171 @@
 <div align="center">
-  <img src="public/favicon.svg" width="64" height="64" alt="Vitalgate logo">
-  <h1>Vitalgate</h1>
-  <p><strong>Performance budgets for every pull request.</strong></p>
+
+<img src="public/brand/github-app-icon.png" width="96" height="96" alt="Vitalgate logo">
+
+# Vitalgate
+
+**Performance budgets for every pull request.**
+
+[![CI](https://github.com/ingfranciscastillo/Vitalgate/actions/workflows/ci.yml/badge.svg)](https://github.com/ingfranciscastillo/Vitalgate/actions/workflows/ci.yml)
+![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)
+![pnpm](https://img.shields.io/badge/pnpm-12-F69220?logo=pnpm&logoColor=white)
+![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
+
+[Overview](#overview) • [How it works](#how-it-works) • [Getting started](#getting-started) • [Configuration](#configuration) • [Development](#development) • [Deployment](#deployment)
+
 </div>
 
-Vitalgate runs Lighthouse on every GitHub pull request, enforces performance
-budgets on Core Web Vitals, and blocks merges that regress LCP, INP, CLS, or
-your Lighthouse score — before a regression ever reaches production.
+## Overview
 
-## Features
+Vitalgate runs Lighthouse on every GitHub pull request, compares the results against the repository's performance budgets, and fails the PR check when a change breaks a required budget. Results are posted on the pull request, and alerts go out by email, Slack or Discord.
 
-- **Automated Lighthouse audits** on every pull request, via a GitHub Action
-  committed automatically when a repo is connected
-- **Per-metric performance budgets** (LCP, INP, CLS, FCP, TBT, Score) with
-  warn or block severity per metric
-- **Required status checks** that block a merge when a hard budget is
-  violated
-- **Alerts** for budget violations, 3-day regressions, and org-wide score
-  drops, plus an optional weekly digest email
-- **Slack and Discord integrations** via OAuth incoming webhooks
-- **Multi-tenant organizations** with member roles, invites, and per-org
-  settings
-- **Dashboard** with workspace-wide trends, repo health, and recent pull
-  requests
+- **Budgets per repository** for LCP, CLS, FCP, TBT and the Lighthouse performance score, each one *required* (fails the check) or a *warning*.
+- **Results on the pull request**: one comment per PR, updated on every push, with each metric, its change against the baseline and its budget.
+- **Alerts** for budget violations, 3‑day regressions and a falling workspace score — by email, Slack or Discord — plus daily and weekly digests.
+- **Workspaces** with owners, admins and view-only members, invitations, and per-workspace plans (Free: 1 repository; Pro: unlimited, Slack/Discord, extra rules, digests, more workspaces).
+- **Least-privilege GitHub access** through a GitHub App installed only on the repositories you pick. Sign-in itself only reads your GitHub identity.
 
-## Stack
+## How it works
 
-- [TanStack Start](https://tanstack.com/start) — full-stack React framework
-  (React 19, Vite, Nitro)
-- [TanStack Router](https://tanstack.com/router) and
-  [TanStack Query](https://tanstack.com/query) — routing and data fetching
-- [Drizzle ORM](https://orm.drizzle.team/) on
-  [PostgreSQL](https://www.postgresql.org/) ([Neon](https://neon.tech/))
-- [Better Auth](https://www.better-auth.com/) — authentication, GitHub
-  OAuth, organizations
-- [Tailwind CSS](https://tailwindcss.com/) v4,
-  [Radix UI](https://www.radix-ui.com/),
-  [Phosphor Icons](https://phosphoricons.com/)
-- [Resend](https://resend.com/) — transactional email
-- [Biome](https://biomejs.dev/) — linting and formatting
+```mermaid
+sequenceDiagram
+    participant U as User
+    participant V as Vitalgate
+    participant G as GitHub
+    participant A as GitHub Actions
+
+    U->>V: Connect a repository (via the GitHub App)
+    V->>G: Commit .github/workflows/vitalgate.yml (as the app)
+    Note over A: On every pull request
+    A->>A: Build, start the app, run Lighthouse
+    A->>G: Request an OIDC token for this run
+    A->>V: POST /api/ingest with metrics + OIDC token
+    V->>V: Verify token → repo & PR, check budgets, record alerts
+    V->>G: Comment results on the PR (as the app)
+    V-->>A: status (failing → the check fails)
+```
+
+Audits run on **your own** GitHub Actions runner: Vitalgate never builds or hosts your app. The workflow proves which repository and pull request it reports for with a short-lived token signed by GitHub (OIDC), so there is no secret to copy into each repository.
+
+> [!NOTE]
+> Lighthouse lab runs can't measure INP, which needs real user interactions. TBT is its lab stand-in, so budgets cover LCP, CLS, FCP, TBT and the performance score.
+
+## Getting started
+
+### Prerequisites
+
+- [Node.js](https://nodejs.org/) 22 or later and [pnpm](https://pnpm.io/) 12 (`corepack enable` picks the version pinned in `package.json`)
+- A [Neon](https://neon.tech/) Postgres database (a dev branch is recommended)
+- A GitHub account to create an OAuth app and a GitHub App
+- Optional: [Resend](https://resend.com/) for email, Slack and Discord apps for alert delivery
+
+### Install and run
+
+```bash
+pnpm install
+cp .env.example .env.local   # then fill it in, see Configuration
+pnpm db:push                 # create the schema in your database
+pnpm dev                     # http://localhost:3000
+```
+
+Sign in with GitHub, install the GitHub App from **Connect a repository**, and pick a repository.
+
+> [!IMPORTANT]
+> GitHub Actions can't reach `localhost`, so the workflow's final *Report to Vitalgate* step only succeeds against a deployed instance (or a public tunnel set as `BETTER_AUTH_URL`).
+
+## Configuration
+
+Every variable is documented in [`.env.example`](.env.example). The main pieces:
+
+| Variable | Purpose |
+| --- | --- |
+| `DATABASE_URL` | Neon connection string |
+| `BETTER_AUTH_URL` | Public origin of the app; every absolute link and OAuth callback is built from it. Must be `https` in production. |
+| `BETTER_AUTH_SECRET` | Signs sessions and OAuth state, encrypts stored GitHub tokens (`openssl rand -base64 32`) |
+| `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth app used for sign-in |
+| `GITHUB_APP_ID` / `GITHUB_APP_SLUG` / `GITHUB_APP_PRIVATE_KEY` / `GITHUB_APP_WEBHOOK_SECRET` | The Vitalgate GitHub App |
+| `RESEND_API_KEY` / `RESEND_FROM_EMAIL` / `CONTACT_EMAIL` | Alert, invitation and digest emails; contact form |
+| `CRON_SECRET` | Bearer token Vercel Cron sends to the digest endpoints |
+| `INTEGRATION_ENCRYPTION_KEY` | Encrypts Slack/Discord webhook URLs (32 bytes, base64) |
+| `SLACK_*` / `DISCORD_*` | OAuth apps for Slack and Discord alerts |
+
+### GitHub OAuth app (sign-in)
+
+Create it under **Settings → Developer settings → OAuth Apps** with the callback URL `$BETTER_AUTH_URL/api/auth/callback/github`. Sign-in requests only `read:user`, `user:email` and `read:org`.
+
+### GitHub App (repository access)
+
+Create it under **Settings → Developer settings → GitHub Apps**:
+
+| Setting | Value |
+| --- | --- |
+| Setup URL | `$BETTER_AUTH_URL/api/github/setup`, with **Redirect on update** checked |
+| Webhook URL | `$BETTER_AUTH_URL/api/github/webhook`, with a secret (`GITHUB_APP_WEBHOOK_SECRET`) |
+| Repository permissions | Contents, Workflows, Pull requests, Checks: **Read and write**; Metadata: **Read-only** |
+| Subscribe to events | **Repository** (installation events are always sent) |
+| Logo | [`public/brand/github-app-icon.png`](public/brand/github-app-icon.png) |
+
+Generate a private key and store it base64-encoded on one line:
+
+```bash
+base64 -w0 your-app.private-key.pem   # → GITHUB_APP_PRIVATE_KEY
+```
+
+> [!TIP]
+> In development GitHub can't deliver webhooks to `localhost`. Create a channel at [smee.io](https://smee.io), use it as the app's webhook URL, and forward it:
+>
+> ```bash
+> npx smee-client --url https://smee.io/<channel> --target http://localhost:3000/api/github/webhook
+> ```
+
+### Plans
+
+A workspace's plan is the `plan` column of the `organization` table (`free` or `pro`). There is no billing integration yet; change it directly in the database:
+
+```sql
+UPDATE organization SET plan = 'pro' WHERE slug = '<workspace-slug>';
+```
+
+## Development
+
+| Command | Description |
+| --- | --- |
+| `pnpm dev` | Start the dev server on port 3000 |
+| `pnpm build` / `pnpm preview` | Production build (Vercel preset) and local preview |
+| `pnpm test` | Run the Vitest suite |
+| `pnpm typecheck` | Type-check with `tsc` |
+| `pnpm check` | Lint and format check with Biome |
+| `pnpm db:push` | Apply the schema in `src/db` to the database |
+| `pnpm db:generate` | Generate a SQL migration in `drizzle/` from schema changes |
+| `pnpm db:studio` | Browse the database with Drizzle Studio |
+
+CI ([`.github/workflows/ci.yml`](.github/workflows/ci.yml)) runs Biome, `tsc`, the tests and a production build on every push to `master` and every pull request.
+
+### Project structure
+
+```text
+src/
+├── routes/             # Pages (TanStack Router file routes)
+│   ├── _authenticated/ # Dashboard, repositories, pull requests, alerts, team, settings
+│   └── api/            # ingest, GitHub setup/webhook, auth, integrations, cron
+├── lib/                # Server functions (*.functions.ts), server-only modules (*.server.ts), shared logic
+├── components/         # UI components (shadcn/ui primitives in ui/)
+└── db/                 # Drizzle schema (auth + product tables)
+drizzle/                # SQL migrations
+```
+
+### Stack
+
+[TanStack Start](https://tanstack.com/start) (React 19, Vite, Nitro) · [TanStack Router](https://tanstack.com/router) and [Query](https://tanstack.com/query) · [Drizzle ORM](https://orm.drizzle.team/) on [Neon](https://neon.tech/) Postgres · [Better Auth](https://www.better-auth.com/) · [Tailwind CSS](https://tailwindcss.com/) v4 and [Radix UI](https://www.radix-ui.com/) · [Resend](https://resend.com/) · [Biome](https://biomejs.dev/) · [Vitest](https://vitest.dev/)
+
+## Deployment
+
+Vitalgate is built for [Vercel](https://vercel.com/) (Nitro's `vercel` preset).
+
+1. Create a production GitHub App and OAuth app pointing at your domain (a separate app from development).
+2. Set every variable from `.env.example` in the Vercel project, with `BETTER_AUTH_URL` as your `https://` domain.
+3. Apply the schema to the production database with `pnpm db:push`, using its `DATABASE_URL`.
+4. Deploy. [`vercel.json`](vercel.json) registers the cron jobs — the daily digest (08:00 UTC) and the weekly digest (Mondays 09:00 UTC) — and the security headers.
+
+> [!WARNING]
+> Without a domain verified in Resend, email can only be delivered to the Resend account's own address. Verify a domain and set `RESEND_FROM_EMAIL` before inviting anyone.
