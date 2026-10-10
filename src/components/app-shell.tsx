@@ -203,7 +203,7 @@ function SidebarContent({
 				<button
 					type="button"
 					onClick={() => {
-						void authClient.signOut().then(() => navigate({ to: "/login" }));
+						signOut(navigate);
 					}}
 					className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-sidebar-accent/60 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
 				>
@@ -215,6 +215,76 @@ function SidebarContent({
 	);
 }
 
+function signOut(navigate: ReturnType<typeof useNavigate>) {
+	void authClient.signOut().then(() => navigate({ to: "/login" }));
+}
+
+/** The avatar in the header: who's signed in, plus Settings and Sign out. */
+function UserMenu() {
+	const { data: session } = authClient.useSession();
+	const navigate = useNavigate();
+	const user = session?.user;
+	const initial = user?.name?.charAt(0).toUpperCase() ?? "U";
+
+	return (
+		<DropdownMenu.Root>
+			<DropdownMenu.Trigger asChild>
+				<button
+					type="button"
+					aria-label="Account menu"
+					className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+				>
+					{user?.image ? (
+						<img
+							src={user.image}
+							alt=""
+							width={32}
+							height={32}
+							decoding="async"
+							className="size-8 shrink-0 rounded-full object-cover"
+						/>
+					) : (
+						<span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+							{initial}
+						</span>
+					)}
+				</button>
+			</DropdownMenu.Trigger>
+			<DropdownMenu.Portal>
+				<DropdownMenu.Content
+					align="end"
+					sideOffset={8}
+					className="z-50 w-60 rounded-md border border-border bg-popover p-1 text-sm text-popover-foreground shadow-md"
+				>
+					{user && (
+						<div className="px-2 py-2">
+							<div className="truncate font-medium">{user.name}</div>
+							<div className="truncate text-xs text-muted-foreground">
+								{user.email}
+							</div>
+						</div>
+					)}
+					<DropdownMenu.Separator className="my-1 h-px bg-border" />
+					<DropdownMenu.Item
+						onSelect={() => navigate({ to: "/settings" })}
+						className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+					>
+						<GearIcon className="size-4" />
+						Settings
+					</DropdownMenu.Item>
+					<DropdownMenu.Item
+						onSelect={() => signOut(navigate)}
+						className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+					>
+						<SignOutIcon className="size-4" />
+						Sign out
+					</DropdownMenu.Item>
+				</DropdownMenu.Content>
+			</DropdownMenu.Portal>
+		</DropdownMenu.Root>
+	);
+}
+
 export function AppShell({
 	children,
 	title,
@@ -223,10 +293,8 @@ export function AppShell({
 	title?: string;
 }) {
 	const pathname = useRouterState({ select: (s) => s.location.pathname });
-	const { data: session } = authClient.useSession();
 	const [mobileNavOpen, setMobileNavOpen] = useState(false);
 
-	const initial = session?.user.name?.charAt(0).toUpperCase() ?? "U";
 	// Each page's title icon matches its own sidebar entry instead of a single
 	// icon reused everywhere — falls back to ChartBarIcon for a title-bearing
 	// page with no matching nav item (none today, but detail pages don't pass
@@ -238,7 +306,9 @@ export function AppShell({
 
 	return (
 		<div className="flex min-h-dvh w-full bg-background text-foreground">
-			<aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:flex">
+			{/* Pinned to the viewport, so Sign out stays at the bottom of the
+			    screen however long the page is. */}
+			<aside className="hidden w-60 shrink-0 flex-col border-r border-border bg-sidebar lg:sticky lg:top-0 lg:flex lg:h-dvh">
 				<div className="flex h-14 items-center border-b border-border px-5">
 					<Link to="/dashboard">
 						<Logo />
@@ -296,20 +366,7 @@ export function AppShell({
 					<div className="ml-auto flex items-center gap-2">
 						<NotificationBell />
 						<ThemeToggle />
-						{session?.user.image ? (
-							<img
-								src={session.user.image}
-								alt={session.user.name}
-								width={32}
-								height={32}
-								decoding="async"
-								className="size-8 shrink-0 rounded-full object-cover"
-							/>
-						) : (
-							<div className="grid size-8 shrink-0 place-items-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
-								{initial}
-							</div>
-						)}
+						<UserMenu />
 					</div>
 				</header>
 
