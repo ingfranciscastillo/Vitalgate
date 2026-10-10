@@ -2,7 +2,12 @@ import {
 	DesktopIcon,
 	DiscordLogoIcon,
 	GithubLogoIcon,
+	GoogleLogoIcon,
+	KanbanIcon,
+	MicrosoftTeamsLogoIcon,
 	SlackLogoIcon,
+	TicketIcon,
+	WebhooksLogoIcon,
 	XIcon,
 } from "@phosphor-icons/react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -422,9 +427,62 @@ function IntegrationsTab() {
 					</IntegrationCardShell>
 				</motion.div>
 			</motion.div>
+
+			<section className="mt-8 max-w-3xl">
+				<h2 className="text-sm font-semibold">Coming soon</h2>
+				<ul className="mt-3 grid gap-3 sm:grid-cols-2">
+					{UPCOMING_INTEGRATIONS.map(({ icon: Icon, name, desc }) => (
+						<li
+							key={name}
+							className="flex items-start gap-3 rounded-md border border-dashed border-border p-4"
+						>
+							<div className="h-8 w-8 shrink-0 rounded-md bg-muted grid place-items-center text-muted-foreground">
+								<Icon className="h-4 w-4" />
+							</div>
+							<div>
+								<div className="text-sm font-medium">{name}</div>
+								<p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
+							</div>
+						</li>
+					))}
+				</ul>
+			</section>
 		</>
 	);
 }
+
+/** Planned integrations, listed so workspaces know what's next. Not connectable yet. */
+const UPCOMING_INTEGRATIONS: {
+	icon: ComponentType<{ className?: string }>;
+	name: string;
+	desc: string;
+}[] = [
+	{
+		icon: MicrosoftTeamsLogoIcon,
+		name: "Microsoft Teams",
+		desc: "Budget alerts in a Teams channel.",
+	},
+	{
+		icon: GoogleLogoIcon,
+		name: "Google Chat",
+		desc: "Budget alerts in a Google Chat space.",
+	},
+	{
+		icon: KanbanIcon,
+		name: "Linear",
+		desc: "Open an issue when a required budget fails on the default branch.",
+	},
+	{
+		icon: TicketIcon,
+		name: "Jira",
+		desc: "Create a ticket for each regression, linked to its pull request.",
+	},
+	{
+		icon: WebhooksLogoIcon,
+		name: "Webhooks",
+		desc: "POST every alert as JSON to a URL you choose.",
+	},
+];
 
 /**
  * better-auth's /list-sessions requires a "fresh" session (created within
