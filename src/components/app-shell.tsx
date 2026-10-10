@@ -139,7 +139,7 @@ function WorkspaceSwitcher() {
 				<DropdownMenu.Content
 					align="start"
 					sideOffset={4}
-					className="z-50 min-w-(--radix-dropdown-menu-trigger-width) rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-md"
+					className="z-50 min-w-(--radix-dropdown-menu-trigger-width) rounded-md border border-border bg-popover p-1 text-xs text-popover-foreground shadow-md origin-(--radix-dropdown-menu-content-transform-origin) outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-250 motion-reduce:animate-none"
 				>
 					<DropdownMenu.Label className="px-2 py-1.5 text-[10px] uppercase tracking-wider text-muted-foreground">
 						Workspaces
@@ -232,7 +232,7 @@ function UserMenu() {
 				<button
 					type="button"
 					aria-label="Account menu"
-					className="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+					className="rounded-full transition-shadow duration-150 hover:ring-2 hover:ring-border data-[state=open]:ring-2 data-[state=open]:ring-primary/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
 				>
 					{user?.image ? (
 						<img
@@ -254,7 +254,7 @@ function UserMenu() {
 				<DropdownMenu.Content
 					align="end"
 					sideOffset={8}
-					className="z-50 w-60 rounded-md border border-border bg-popover p-1 text-sm text-popover-foreground shadow-md"
+					className="z-50 w-60 rounded-md border border-border bg-popover p-1 text-sm text-popover-foreground shadow-md origin-(--radix-dropdown-menu-content-transform-origin) outline-none data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=closed]:duration-150 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 data-[state=open]:duration-250 motion-reduce:animate-none"
 				>
 					{user && (
 						<div className="px-2 py-2">
