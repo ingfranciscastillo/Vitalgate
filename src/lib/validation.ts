@@ -68,6 +68,8 @@ export const connectRepositoriesSchema = z.object({
 	branchProtect: z.boolean(),
 	/** Whether the workflow posts a results comment on each PR (default on). */
 	postComments: z.boolean().optional(),
+	/** Build the app in GitHub Actions, or audit the host's preview deployments. */
+	auditMode: z.enum(["build", "preview"]).default("build"),
 	/** A package.json script name; it's written into the workflow's run step. */
 	startScript: z
 		.string()

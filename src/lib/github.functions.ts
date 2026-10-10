@@ -56,6 +56,52 @@ async function getInstallationRepos(
 	return byRepoId;
 }
 
+/**
+ * Which of the given repositories already have preview (non-production)
+ * deployments reported to GitHub — by Vercel, Netlify, Render… — so the
+ * connect page can suggest auditing previews instead of building. Only
+ * repos the workspace's app installations can see are checked.
+ */
+export const detectPreviewDeployments = createServerFn({ method: "GET" })
+	.validator(parseInput(z.array(z.string().regex(/^\d{1,20}$/)).max(20)))
+	.handler(async ({ data: githubRepoIds }): Promise<string[]> => {
+		const session = await ensureSession();
+		const organizationId = session.session.activeOrganizationId;
+		if (!organizationId || githubRepoIds.length === 0) return [];
+		const appRepos = await getInstallationRepos(organizationId);
+
+		const checks = githubRepoIds.map(async (id) => {
+			const entry = appRepos.get(id);
+			if (!entry) return null;
+			const token = await getInstallationToken(entry.installationId);
+			const res = await fetch(
+				`https://api.github.com/repos/${entry.repo.fullName}/deployments?per_page=20`,
+				{
+					headers: {
+						authorization: `Bearer ${token}`,
+						accept: "application/vnd.github+json",
+						"x-github-api-version": "2022-11-28",
+					},
+					signal: AbortSignal.timeout(5000),
+				},
+			).catch(() => null);
+			if (!res?.ok) return null;
+			const deployments = (await res.json()) as {
+				environment: string;
+				production_environment?: boolean;
+			}[];
+			const hasPreview = deployments.some(
+				(d) =>
+					!d.production_environment &&
+					d.environment.toLowerCase() !== "production",
+			);
+			return hasPreview ? id : null;
+		});
+		return (await Promise.all(checks)).filter(
+			(id): id is string => id !== null,
+		);
+	});
+
 export interface ConnectableRepos {
 	repos: GhRepo[];
 	/**
@@ -271,6 +317,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					private: repo.private,
 					envVarNames: typedEnvVarNames,
 					postPrComments: data.postComments ?? true,
+					auditMode: data.auditMode,
 					installationId,
 				})
 				.onConflictDoNothing({ target: repos.githubRepoId })
@@ -318,7 +365,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					githubRepoId: repo.id,
 					fullName: repo.fullName,
 					defaultBranch: repo.defaultBranch,
-					auditMode: "build",
+					auditMode: data.auditMode,
 				},
 				envVarNames,
 				vitalgateOrigin,

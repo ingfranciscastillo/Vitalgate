@@ -34,6 +34,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { AUDIT_MODES } from "@/lib/audit-modes";
 import { formatDelivery, timeAgo } from "@/lib/format";
 import {
 	disconnectRepository,
@@ -51,19 +52,6 @@ const levelIcon = {
 	warning: WarningIcon,
 	info: InfoIcon,
 } as const;
-
-const AUDIT_MODES = [
-	{
-		id: "build",
-		label: "Build in GitHub Actions",
-		desc: "Builds and starts the app in the workflow, then audits it on localhost.",
-	},
-	{
-		id: "preview",
-		label: "Preview deployments",
-		desc: "Audits the preview your host (Vercel, Netlify, Render…) deploys for each pull request. Faster, and no secrets needed.",
-	},
-] as const;
 
 export const Route = createFileRoute("/_authenticated/repositories/$repoId")({
 	// loader must come before head — see pulls/$prId.tsx for why.

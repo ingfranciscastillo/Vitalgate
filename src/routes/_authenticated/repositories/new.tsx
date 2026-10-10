@@ -31,8 +31,12 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from "@/components/ui/select";
+import { AUDIT_MODES, type AuditMode } from "@/lib/audit-modes";
 import { authClient } from "@/lib/auth-client";
-import { connectRepositories } from "@/lib/github.functions";
+import {
+	connectRepositories,
+	detectPreviewDeployments,
+} from "@/lib/github.functions";
 import { connectableReposQueryOptions } from "@/lib/github.queries";
 import { getGithubInstallUrl } from "@/lib/integrations.functions";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
@@ -105,6 +109,22 @@ function ConnectRepo() {
 	const [startScript, setStartScript] = useState("");
 	const [port, setPort] = useState("");
 	const [envVarNames, setEnvVarNames] = useState("");
+	// Null until the user picks one: until then, preview is suggested when
+	// every selected repo already gets preview deployments.
+	const [chosenAuditMode, setChosenAuditMode] = useState<AuditMode | null>(
+		null,
+	);
+	const sortedSelection = [...selected].sort();
+	const { data: previewRepoIds } = useQuery({
+		queryKey: ["github", "preview-deployments", sortedSelection],
+		queryFn: () => detectPreviewDeployments({ data: sortedSelection }),
+		enabled: sortedSelection.length > 0 && sortedSelection.length <= 20,
+		staleTime: 5 * 60_000,
+	});
+	const previewDetected =
+		selected.length > 0 && selected.every((id) => previewRepoIds?.includes(id));
+	const auditMode: AuditMode =
+		chosenAuditMode ?? (previewDetected ? "preview" : "build");
 	const [shakeSummary, setShakeSummary] = useState(false);
 	const [showLimitDialog, setShowLimitDialog] = useState(false);
 	const reduce = useReducedMotion();
@@ -217,6 +237,7 @@ function ConnectRepo() {
 				preset,
 				branchProtect,
 				postComments,
+				auditMode,
 				startScript: startScript.trim() || undefined,
 				port: port.trim() ? Number(port) : undefined,
 				envVarNames: envVarNames
@@ -431,6 +452,51 @@ function ConnectRepo() {
 						</Card>
 
 						<Card className="p-5">
+							<h2 className="text-sm font-semibold">
+								How pull requests are audited
+							</h2>
+							<div
+								role="radiogroup"
+								aria-label="Audit mode"
+								className="mt-4 grid gap-2 sm:grid-cols-2"
+							>
+								{AUDIT_MODES.map((mode) => (
+									<label
+										key={mode.id}
+										className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+											auditMode === mode.id
+												? "border-primary bg-primary/5"
+												: "border-border hover:bg-muted/30"
+										}`}
+									>
+										<input
+											type="radio"
+											name="audit-mode"
+											className="mt-1 accent-(--color-primary)"
+											checked={auditMode === mode.id}
+											onChange={() => setChosenAuditMode(mode.id)}
+										/>
+										<div className="min-w-0">
+											<div className="flex items-center gap-2">
+												<span className="text-sm font-medium">
+													{mode.label}
+												</span>
+												{mode.id === "preview" && previewDetected && (
+													<span className="rounded-full bg-success/15 px-1.5 py-0.5 text-[10px] text-success">
+														detected
+													</span>
+												)}
+											</div>
+											<p className="mt-0.5 text-xs text-muted-foreground">
+												{mode.desc}
+											</p>
+										</div>
+									</label>
+								))}
+							</div>
+						</Card>
+
+						<Card className="p-5">
 							<h2 className="text-sm font-semibold">Budgets</h2>
 							<p className="mt-1 text-xs text-muted-foreground">
 								A starting point for every selected repository — edit them per
@@ -509,58 +575,60 @@ function ConnectRepo() {
 								</div>
 							</div>
 
-							<details className="group mt-4 border-t border-border pt-4">
-								<summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
-									<CaretRightIcon className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
-									Advanced: start command and secrets
-									<span className="text-xs font-normal text-muted-foreground">
-										— optional, usually auto-detected
-									</span>
-								</summary>
-								<div className="mt-4 grid gap-4 sm:grid-cols-[1fr_7rem]">
-									<div className="space-y-1.5">
-										<Label htmlFor="start-script" className="text-sm">
-											Start command
+							{auditMode === "build" && (
+								<details className="group mt-4 border-t border-border pt-4">
+									<summary className="flex cursor-pointer list-none items-center gap-1.5 text-sm font-medium [&::-webkit-details-marker]:hidden">
+										<CaretRightIcon className="h-3.5 w-3.5 transition-transform group-open:rotate-90" />
+										Advanced: start command and secrets
+										<span className="text-xs font-normal text-muted-foreground">
+											— optional, usually auto-detected
+										</span>
+									</summary>
+									<div className="mt-4 grid gap-4 sm:grid-cols-[1fr_7rem]">
+										<div className="space-y-1.5">
+											<Label htmlFor="start-script" className="text-sm">
+												Start command
+											</Label>
+											<Input
+												id="start-script"
+												placeholder="auto-detected (e.g. start, preview)"
+												value={startScript}
+												onChange={(e) => setStartScript(e.target.value)}
+												className="font-mono text-xs"
+											/>
+										</div>
+										<div className="space-y-1.5">
+											<Label htmlFor="port" className="text-sm">
+												Port
+											</Label>
+											<Input
+												id="port"
+												type="number"
+												placeholder="3000"
+												value={port}
+												onChange={(e) => setPort(e.target.value)}
+												className="font-mono text-xs"
+											/>
+										</div>
+									</div>
+									<div className="mt-4 space-y-1.5">
+										<Label htmlFor="env-var-names" className="text-sm">
+											Secret names
 										</Label>
 										<Input
-											id="start-script"
-											placeholder="auto-detected (e.g. start, preview)"
-											value={startScript}
-											onChange={(e) => setStartScript(e.target.value)}
+											id="env-var-names"
+											placeholder="DATABASE_URL, GROQ_API_KEY"
+											value={envVarNames}
+											onChange={(e) => setEnvVarNames(e.target.value)}
 											className="font-mono text-xs"
 										/>
+										<p className="text-xs text-muted-foreground">
+											Repository secrets your app needs to start, by name only —
+											they must already exist in the repo's GitHub settings.
+										</p>
 									</div>
-									<div className="space-y-1.5">
-										<Label htmlFor="port" className="text-sm">
-											Port
-										</Label>
-										<Input
-											id="port"
-											type="number"
-											placeholder="3000"
-											value={port}
-											onChange={(e) => setPort(e.target.value)}
-											className="font-mono text-xs"
-										/>
-									</div>
-								</div>
-								<div className="mt-4 space-y-1.5">
-									<Label htmlFor="env-var-names" className="text-sm">
-										Secret names
-									</Label>
-									<Input
-										id="env-var-names"
-										placeholder="DATABASE_URL, GROQ_API_KEY"
-										value={envVarNames}
-										onChange={(e) => setEnvVarNames(e.target.value)}
-										className="font-mono text-xs"
-									/>
-									<p className="text-xs text-muted-foreground">
-										Repository secrets your app needs to start, by name only —
-										they must already exist in the repo's GitHub settings.
-									</p>
-								</div>
-							</details>
+								</details>
+							)}
 						</Card>
 					</div>
 
@@ -588,6 +656,14 @@ function ConnectRepo() {
 								</ul>
 							)}
 							<dl className="mt-4 space-y-1.5 border-t border-border pt-4 text-xs">
+								<div className="flex justify-between gap-3">
+									<dt className="text-muted-foreground">Audits</dt>
+									<dd>
+										{auditMode === "preview"
+											? "Preview deployments"
+											: "Build in Actions"}
+									</dd>
+								</div>
 								<div className="flex justify-between gap-3">
 									<dt className="text-muted-foreground">Budgets</dt>
 									<dd>{presetLabel}</dd>
