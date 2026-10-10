@@ -3,7 +3,7 @@ import { MarketingShell } from "@/components/marketing-shell";
 import { Reveal } from "@/components/reveal";
 import { Card } from "@/components/ui/card";
 import { COMPETITORS } from "@/lib/competitors";
-import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
+import { ogImageMeta, SITE_URL } from "@/lib/seo";
 
 const DESCRIPTION =
 	"How Vitalgate compares with Lighthouse CI, Calibre and SpeedCurve: what each does best, pricing, and which fits your team.";
@@ -17,7 +17,7 @@ export const Route = createFileRoute("/compare/")({
 			{ property: "og:url", content: `${SITE_URL}/compare` },
 			{ property: "og:title", content: "Compare Vitalgate" },
 			{ property: "og:description", content: DESCRIPTION },
-			...OG_IMAGE_META,
+			...ogImageMeta("/og/compare.png"),
 			{ name: "twitter:card", content: "summary_large_image" },
 		],
 		links: [{ rel: "canonical", href: `${SITE_URL}/compare` }],

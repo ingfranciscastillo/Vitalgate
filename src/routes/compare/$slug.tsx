@@ -11,7 +11,7 @@ import {
 	type Competitor,
 	getCompetitor,
 } from "@/lib/competitors";
-import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
+import { ogImageMeta, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/compare/$slug")({
 	loader: ({ params }) => {
@@ -31,7 +31,7 @@ export const Route = createFileRoute("/compare/$slug")({
 				{ property: "og:url", content: url },
 				{ property: "og:title", content: title },
 				{ property: "og:description", content: c.description },
-				...OG_IMAGE_META,
+				...ogImageMeta(`/og/compare-${c.slug}.png`),
 				{ name: "twitter:card", content: "summary_large_image" },
 			],
 			links: [{ rel: "canonical", href: url }],

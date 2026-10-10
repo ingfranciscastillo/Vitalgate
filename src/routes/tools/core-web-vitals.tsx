@@ -24,7 +24,7 @@ import {
 	type CruxCheckResult,
 	checkCoreWebVitals,
 } from "@/lib/crux-checker.functions";
-import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
+import { ogImageMeta, SITE_URL } from "@/lib/seo";
 
 const PAGE_URL = `${SITE_URL}/tools/core-web-vitals`;
 const DESCRIPTION =
@@ -49,7 +49,7 @@ export const Route = createFileRoute("/tools/core-web-vitals")({
 			{ property: "og:url", content: PAGE_URL },
 			{ property: "og:title", content: "Free Core Web Vitals checker" },
 			{ property: "og:description", content: DESCRIPTION },
-			...OG_IMAGE_META,
+			...ogImageMeta("/og/core-web-vitals.png"),
 			{ name: "twitter:card", content: "summary_large_image" },
 		],
 		links: [{ rel: "canonical", href: PAGE_URL }],
