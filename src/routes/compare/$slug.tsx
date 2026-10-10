@@ -1,6 +1,7 @@
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { MarketingShell } from "@/components/marketing-shell";
+import { PrCommentPreview } from "@/components/pr-comment-preview";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -109,6 +110,20 @@ function ComparePage() {
 						, checked {COMPARE_CHECKED_ON}. {c.name} pricing: {c.pricing}
 					</p>
 				</Reveal>
+
+				<section className="mt-14">
+					<h2 className="text-xl font-bold tracking-tight">
+						What a pull request gets from Vitalgate
+					</h2>
+					<p className="mt-3 max-w-2xl text-muted-foreground">
+						A results comment, updated on every push, and a "Vitalgate" check
+						that fails when a required budget is broken. Make the check required
+						and the pull request can't be merged.
+					</p>
+					<div className="mt-6">
+						<PrCommentPreview />
+					</div>
+				</section>
 
 				<div className="mt-14 space-y-10">
 					{c.sections.map((s) => (

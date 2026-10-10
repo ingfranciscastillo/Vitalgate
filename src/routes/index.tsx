@@ -15,6 +15,7 @@ import { animate, motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
 import { MetricCard } from "@/components/metric-card";
+import { PrCommentPreview } from "@/components/pr-comment-preview";
 import { Reveal } from "@/components/reveal";
 import { StatusBadge } from "@/components/status-badge";
 import {
@@ -242,15 +243,31 @@ function Features() {
 						Performance engineering, in your existing GitHub flow.
 					</h2>
 				</Reveal>
-				<div className="mt-12 grid gap-4 lg:grid-cols-2">
+				<div className="mt-12 grid gap-4">
 					<Reveal>
-						<div className="flex h-full flex-col border border-border p-6 transition-colors duration-200 hover:border-foreground/25">
-							<h3 className="font-bold">Lighthouse CI built-in</h3>
-							<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-								A Lighthouse run on every push to a pull request, on your own
-								GitHub Actions runner.
-							</p>
-							<div className="mt-5 flex-1 border border-border bg-card">
+						<div className="grid gap-6 border border-border p-6 transition-colors duration-200 hover:border-foreground/25 lg:grid-cols-[1fr_1.7fr] lg:items-center lg:gap-10">
+							<div>
+								<h3 className="font-bold">Results on the pull request</h3>
+								<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+									Every metric against its budget and your baseline, in a
+									comment updated on each push, plus a "Vitalgate" check you can
+									make required so a broken budget can't be merged.
+								</p>
+							</div>
+							<PrCommentPreview />
+						</div>
+					</Reveal>
+					<Reveal delay={0.06}>
+						<div className="grid gap-6 border border-border p-6 transition-colors duration-200 hover:border-foreground/25 lg:grid-cols-[1fr_1.7fr] lg:items-center lg:gap-10">
+							<div>
+								<h3 className="font-bold">Lighthouse on every pull request</h3>
+								<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
+									Three Lighthouse runs on every push, on your own GitHub
+									Actions runner or against your preview deployment. The median
+									run counts, so one noisy run can't fail a PR.
+								</p>
+							</div>
+							<div className="border border-border bg-card">
 								<div className="border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
 									Budgets · acme/storefront
 								</div>
@@ -271,38 +288,6 @@ function Features() {
 									{"    "}severity:{" "}
 									<span className="text-destructive">fail</span>
 								</pre>
-							</div>
-						</div>
-					</Reveal>
-					<Reveal delay={0.06}>
-						<div className="flex h-full flex-col border border-border p-6 transition-colors duration-200 hover:border-foreground/25">
-							<h3 className="font-bold">PR comments</h3>
-							<p className="mt-1.5 max-w-sm text-sm leading-relaxed text-muted-foreground">
-								Per-metric changes vs. your baseline land directly in the PR,
-								before a human ever has to ask.
-							</p>
-							<div className="mt-5 flex-1 border border-border bg-card">
-								<div className="border-b border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">
-									vitalgate[bot] on acme/storefront#1042
-								</div>
-								<div className="px-3 py-3 text-[13px] leading-relaxed">
-									<span className="font-semibold text-destructive">
-										2 metrics regressed
-									</span>
-									<div className="mt-2 space-y-1 font-mono text-[12px] text-muted-foreground">
-										<div>
-											LCP <span className="text-foreground">2.1s → 2.9s</span>{" "}
-											(+38%, budget 2.5s)
-										</div>
-										<div>
-											Score <span className="text-foreground">92 → 81</span>{" "}
-											(−11, budget ≥ 90)
-										</div>
-									</div>
-									<p className="mt-2 text-muted-foreground">
-										Merge blocked until resolved.
-									</p>
-								</div>
 							</div>
 						</div>
 					</Reveal>
