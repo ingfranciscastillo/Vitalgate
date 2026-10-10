@@ -86,7 +86,7 @@ export const COMPETITORS: Competitor[] = [
 			},
 			{
 				feature: "Runs per audit",
-				vitalgate: "One Lighthouse run per pull request",
+				vitalgate: "Three per pull request; the median run is reported",
 				them: "Configurable, with median selection",
 			},
 			{ feature: "Price", vitalgate: VITALGATE_PRICING, them: "Free" },
@@ -102,7 +102,7 @@ export const COMPETITORS: Competitor[] = [
 			},
 			{
 				title: "Where Lighthouse CI is stronger",
-				body: "It's free, it runs anywhere (not just GitHub), it can run Lighthouse several times and keep the median to reduce noise, and it can audit several URLs per build. If you want full control and are happy to host and maintain it, it's a great choice.",
+				body: "It's free, it runs anywhere (not just GitHub), it can assert on every Lighthouse audit, and it can audit several URLs per build. If you want full control and are happy to host and maintain it, it's a great choice.",
 			},
 		],
 		themBestFor: [
@@ -214,7 +214,7 @@ export const COMPETITORS: Competitor[] = [
 			},
 			{
 				feature: "Synthetic tests",
-				vitalgate: "One Lighthouse run per pull request",
+				vitalgate: "Median of three Lighthouse runs per pull request",
 				them: "Scheduled, many locations, filmstrips",
 			},
 			{

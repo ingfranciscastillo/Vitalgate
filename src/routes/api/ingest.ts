@@ -52,6 +52,8 @@ const ingestBodySchema = z.object({
 	prAuthor: z.string().min(1).max(39).optional(),
 	branch: z.string().min(1).max(255).optional(),
 	metrics: metricsSchema,
+	/** How many Lighthouse runs the metrics are the median of. */
+	runs: z.number().int().min(1).max(10).optional(),
 	/** The pull request's head commit, which the "Vitalgate" check is attached to. */
 	headSha: z
 		.string()
@@ -411,6 +413,7 @@ async function handleIngest(request: Request) {
 		budgets: budgetRows,
 		reportUrl,
 		isFirstRun: !lastRun,
+		runs: body.runs ?? 1,
 	});
 	const comment = repo.postPrComments ? results : null;
 

@@ -78,9 +78,23 @@ function runScript(manager: PackageManager, script: string): string {
 /** First line of every generated workflow: the marker, plus a note for whoever opens the file. */
 const HEADER = `${WORKFLOW_MANAGED_MARKER} Vitalgate regenerates this file from this repository's Settings — edits made directly here will be overwritten.`;
 
+/** Lighthouse runs per audit; the report uses the median one, so one noisy run can't fail a PR. */
+const LIGHTHOUSE_RUNS = 3;
+
 /**
- * The "Report to Vitalgate" step, shared by both audit modes: reads
- * ./lighthouse.json, asks GitHub for an OIDC token proving which repository
+ * Bash that runs Lighthouse LIGHTHOUSE_RUNS times against `target`, writing
+ * ./lighthouse-<n>.json. A failed run is logged and skipped; the report
+ * step fails only if every run did.
+ */
+function lighthouseRuns(target: string, extraArgs = ""): string {
+	return `for i in $(seq 1 ${LIGHTHOUSE_RUNS}); do
+            npx --yes lighthouse ${target} --output=json --output-path=./lighthouse-$i.json --chrome-flags="--headless --no-sandbox" --max-wait-for-load=45000${extraArgs} || echo "Lighthouse run $i failed"
+          done`;
+}
+
+/**
+ * The "Report to Vitalgate" step, shared by both audit modes: picks the
+ * median of the ./lighthouse-<n>.json runs by performance score, asks GitHub for an OIDC token proving which repository
  * (and PR or deployed commit) this run is for, sends the metrics, and posts
  * the results comment itself only as a fallback (normally the GitHub App
  * posts it). On pull_request runs the PR details come from the event; on
@@ -102,7 +116,25 @@ ${prEnv}          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
         run: |
           node -e '
           const fs = require("fs");
-          const report = JSON.parse(fs.readFileSync("./lighthouse.json", "utf8"));
+          // The median run by performance score: its metrics all come from
+          // one real page load, and a single outlier run can not decide it.
+          const runs = fs
+            .readdirSync(".")
+            .filter((f) => f.startsWith("lighthouse-") && f.endsWith(".json"))
+            .map((f) => {
+              try {
+                return JSON.parse(fs.readFileSync(f, "utf8"));
+              } catch {
+                return null;
+              }
+            })
+            .filter((r) => r && r.categories && r.categories.performance && r.categories.performance.score != null)
+            .sort((x, y) => x.categories.performance.score - y.categories.performance.score);
+          if (runs.length === 0) {
+            console.error("Vitalgate: every Lighthouse run failed, so there is nothing to report.");
+            process.exit(1);
+          }
+          const report = runs[Math.floor(runs.length / 2)];
           const a = report.audits;
           const metrics = {
             LCP: a["largest-contentful-paint"].numericValue,
@@ -165,6 +197,7 @@ ${prEnv}          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
                 branch: process.env.PR_BRANCH,
                 headSha: process.env.PR_HEAD_SHA,
                 metrics,
+                runs: runs.length,
               }),
             });
             const body = await res.json();
@@ -256,7 +289,7 @@ jobs:
       id-token: write
     # Bounds the whole job so a hung dev server (or anything else) fails loudly
     # instead of running until someone notices and cancels it by hand.
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v7
 
@@ -276,8 +309,9 @@ ${forwardedEnv}        run: |
           npx --yes wait-on -v "http://localhost:\${{ env.VITALGATE_PORT }}" --timeout 180000 --interval 2000 --httpTimeout 10000
 
       - name: Run Lighthouse
-        timeout-minutes: 5
-        run: npx --yes lighthouse "http://localhost:\${{ env.VITALGATE_PORT }}" --output=json --output-path=./lighthouse.json --chrome-flags="--headless --no-sandbox" --max-wait-for-load=45000
+        timeout-minutes: 12
+        run: |
+          ${lighthouseRuns(`"http://localhost:\${{ env.VITALGATE_PORT }}"`)}
 
 ${reportStep(opts.vitalgateOrigin, "build")}
 # Package manager (${opts.packageManager}${opts.packageManager === "pnpm" ? ` ${opts.pnpmVersion}` : ""}), serve script ("${opts.startScript}")
@@ -325,10 +359,10 @@ jobs:
     permissions:
       pull-requests: write
       id-token: write
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - name: Run Lighthouse on the preview
-        timeout-minutes: 5
+        timeout-minutes: 12
         env:
           PREVIEW_URL: \${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
           # Optional: Vercel's "Protection Bypass for Automation" secret, for
@@ -339,7 +373,7 @@ jobs:
           if [ -n "$VERCEL_BYPASS" ]; then
             EXTRA_HEADERS=(--extra-headers "{\\"x-vercel-protection-bypass\\":\\"$VERCEL_BYPASS\\"}")
           fi
-          npx --yes lighthouse "$PREVIEW_URL" --output=json --output-path=./lighthouse.json --chrome-flags="--headless --no-sandbox" --max-wait-for-load=45000 "\${EXTRA_HEADERS[@]}"
+          ${lighthouseRuns('"$PREVIEW_URL"', ` "\${EXTRA_HEADERS[@]}"`)}
 
 ${reportStep(opts.vitalgateOrigin, "preview")}`;
 }

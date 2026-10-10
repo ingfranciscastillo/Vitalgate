@@ -114,6 +114,7 @@ describe("PR comment", () => {
 			budgets,
 			reportUrl: "https://vitalgate.example/pulls/p1",
 			isFirstRun: true,
+			runs: 1,
 		});
 		expect(md.startsWith(PR_COMMENT_MARKER)).toBe(true);
 		expect(md).toContain("all performance budgets passed");
@@ -127,8 +128,10 @@ describe("PR comment", () => {
 			budgets,
 			reportUrl: "https://vitalgate.example/pulls/p1",
 			isFirstRun: false,
+			runs: 3,
 		});
 		expect(md).toContain("a required performance budget was exceeded");
+		expect(md).toContain("Median of 3 Lighthouse lab runs");
 		expect(md).toMatch(
 			/Largest Contentful Paint \| 4\.20s \| \+100% 🔴 \| ≤ 2\.50s \(required\) \| ❌/,
 		);
@@ -148,6 +151,7 @@ describe("PR comment", () => {
 			budgets,
 			reportUrl: "https://vitalgate.example/pulls/p1",
 			isFirstRun: true,
+			runs: 1,
 		});
 		expect(md).not.toContain("Interaction to Next Paint");
 		expect(md).not.toContain("Performance score");

@@ -33,6 +33,8 @@ export interface PrCommentInput {
 	reportUrl: string;
 	/** True when this run is the PR's own baseline (the repo's first audit), so there's nothing to diff. */
 	isFirstRun: boolean;
+	/** Lighthouse runs the metrics are the median of. */
+	runs: number;
 }
 
 const HEADLINE: Record<PrStatus, string> = {
@@ -99,6 +101,6 @@ export function renderPrComment(input: PrCommentInput): string {
 		"| --- | --- | --- | --- | --- |",
 		...rows,
 		"",
-		`<sub>Lighthouse lab run on this workflow's runner. [Full report on Vitalgate](${input.reportUrl})${input.isFirstRun ? " · First audit for this repo, so there's no baseline to compare against yet." : ""}</sub>`,
+		`<sub>${input.runs > 1 ? `Median of ${input.runs} Lighthouse lab runs` : "Lighthouse lab run"} on this workflow's runner. [Full report on Vitalgate](${input.reportUrl})${input.isFirstRun ? " · First audit for this repo, so there's no baseline to compare against yet." : ""}</sub>`,
 	].join("\n");
 }

@@ -97,6 +97,13 @@ describe("vitalgatePreviewWorkflowYaml", () => {
 		expect(yaml).not.toContain("pull_request:");
 	});
 
+	it("runs Lighthouse three times and reports the median run", () => {
+		expect(yaml).toContain("for i in $(seq 1 3); do");
+		expect(yaml).toContain("--output-path=./lighthouse-$i.json");
+		expect(script).toContain("runs[Math.floor(runs.length / 2)]");
+		expect(script).toContain("runs: runs.length");
+	});
+
 	it("audits the deployment URL, with Vercel's bypass header when set", () => {
 		expect(yaml).toContain('npx --yes lighthouse "$PREVIEW_URL"');
 		expect(yaml).toContain(
