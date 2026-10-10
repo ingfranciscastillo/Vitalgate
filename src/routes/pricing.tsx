@@ -5,10 +5,12 @@ import { MarketingShell } from "@/components/marketing-shell";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getPublicFounderOffer } from "@/lib/billing.functions";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/pricing")({
+	loader: () => getPublicFounderOffer(),
 	head: () => ({
 		meta: [
 			{ title: "Pricing: Vitalgate" },
@@ -64,6 +66,7 @@ const plans = [
 
 function Pricing() {
 	const reduce = useReducedMotion();
+	const founder = Route.useLoaderData();
 
 	return (
 		<MarketingShell>
@@ -97,11 +100,32 @@ function Pricing() {
 									)}
 								</div>
 								<div className="mt-3 flex items-baseline gap-1">
-									<span className="font-mono text-4xl font-semibold">
-										{p.price}
-									</span>
-									<span className="text-sm text-muted-foreground">/mo</span>
+									{p.popular && founder ? (
+										<>
+											<span className="font-mono text-4xl font-semibold">
+												${founder.price}
+											</span>
+											<span className="text-sm text-muted-foreground">/mo</span>
+											<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
+												{p.price}
+											</span>
+										</>
+									) : (
+										<>
+											<span className="font-mono text-4xl font-semibold">
+												{p.price}
+											</span>
+											<span className="text-sm text-muted-foreground">/mo</span>
+										</>
+									)}
 								</div>
+								{p.popular && founder && (
+									<p className="mt-2 text-xs font-medium text-brand">
+										Founding price for the first {founder.total} subscribers,
+										kept for as long as you stay subscribed. {founder.remaining}{" "}
+										left.
+									</p>
+								)}
 								<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								<Link to="/login" className="block mt-5">
 									<Button
@@ -133,6 +157,28 @@ function Pricing() {
 						</Reveal>
 					))}
 				</div>
+				<Reveal delay={0.16}>
+					<div className="mt-8 grid gap-4 text-sm sm:grid-cols-2">
+						<div>
+							<h2 className="font-semibold">14-day money-back guarantee</h2>
+							<p className="mt-1 text-muted-foreground">
+								If Pro isn't for you, ask within 14 days of your first payment
+								and we'll refund it in full.
+							</p>
+						</div>
+						<div>
+							<h2 className="font-semibold">Help getting set up</h2>
+							<p className="mt-1 text-muted-foreground">
+								No Vitalgate check on your pull requests 15 minutes after
+								connecting?{" "}
+								<Link to="/contact" className="text-primary hover:underline">
+									Tell us
+								</Link>{" "}
+								and we'll set it up with you.
+							</p>
+						</div>
+					</div>
+				</Reveal>
 			</section>
 		</MarketingShell>
 	);

@@ -213,7 +213,15 @@ function Terms() {
 								until the end of the month you've paid for; we don't refund
 								partial months. If a payment fails, Pro stays on while Polar
 								retries it, and the workspace moves back to the Free plan if it
-								can't be collected.
+								can't be collected. If Pro isn't for you, write to us within 14
+								days of your first payment and we'll refund that payment in
+								full.
+							</p>
+							<p>
+								A founding price may be offered to a limited number of early
+								subscribers. It applies for as long as that subscription stays
+								active, including if we later change Pro's price; if it ends, a
+								new subscription is at the price of the day.
 							</p>
 							<p>
 								We may change the price of Pro. We'll tell you at least 30 days

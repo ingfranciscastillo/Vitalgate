@@ -1,6 +1,7 @@
 import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
 import { createPolarCore, errors } from "@polar-sh/sdk/2026-10";
 import { deleteExternalCustomers } from "@polar-sh/sdk/2026-10/services/customers";
+import { getDiscounts } from "@polar-sh/sdk/2026-10/services/discounts";
 import { revokeSubscriptions } from "@polar-sh/sdk/2026-10/services/subscriptions";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
@@ -179,6 +180,57 @@ export async function revokeOrgSubscription(organizationId: string) {
 		if (err instanceof errors.ResourceNotFound) return;
 		throw err;
 	}
+}
+
+/** Pro's list price in US dollars, as on /pricing. */
+export const PRO_PRICE_USD = 29;
+
+export interface FounderOffer {
+	discountId: string;
+	/** Monthly price with the founding discount, in US dollars. */
+	price: number;
+	/** Founding spots in total and still open; Polar counts redemptions. */
+	total: number;
+	remaining: number;
+}
+
+let founderCache: { at: number; offer: FounderOffer | null } | null = null;
+
+/**
+ * The founding-member offer, if POLAR_FOUNDER_DISCOUNT_ID points at a Polar
+ * discount with a redemption limit that isn't used up yet. The discount
+ * should be "forever", so the price holds as long as the subscription does.
+ * Cached for a minute: it's shown on public pages.
+ */
+export async function getFounderOffer(): Promise<FounderOffer | null> {
+	const discountId = process.env.POLAR_FOUNDER_DISCOUNT_ID;
+	if (!discountId || !isBillingConfigured()) return null;
+	if (founderCache && Date.now() - founderCache.at < 60_000) {
+		return founderCache.offer;
+	}
+	let offer: FounderOffer | null = null;
+	try {
+		const d = await getDiscounts(polarCore())(discountId);
+		const used = d.redemptions_count ?? 0;
+		const total = d.max_redemptions ?? 0;
+		const off =
+			"basis_points" in d
+				? PRO_PRICE_USD * (d.basis_points / 10_000)
+				: d.amount / 100;
+		const ended = d.ends_at != null && new Date(d.ends_at) < new Date();
+		if (total > 0 && used < total && !ended) {
+			offer = {
+				discountId,
+				price: Math.max(0, Math.round((PRO_PRICE_USD - off) * 100) / 100),
+				total,
+				remaining: total - used,
+			};
+		}
+	} catch (err) {
+		console.error("Couldn't load the founder discount", err);
+	}
+	founderCache = { at: Date.now(), offer };
+	return offer;
 }
 
 /** The Better Auth plugin, or nothing when Polar isn't configured (e.g. local dev without keys). */

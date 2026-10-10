@@ -698,6 +698,7 @@ function BillingCard() {
 	const repoCount = repos?.length ?? 0;
 	const overLimit = !pro && repoCount > FREE_REPO_LIMIT;
 	const sub = billing?.subscription;
+	const founder = billing?.founder ?? null;
 
 	const upgrade = async () => {
 		if (!org) return;
@@ -705,6 +706,7 @@ function BillingCard() {
 		const { error } = await authClient.checkout({
 			slug: "pro",
 			reference_id: org.id,
+			...(founder ? { discount_id: founder.discountId } : {}),
 		});
 		if (error) {
 			toast.error(error.message ?? "Could not open checkout");
@@ -795,7 +797,9 @@ function BillingCard() {
 							? "Opening checkout…"
 							: justPaid
 								? "Activating Pro…"
-								: "Upgrade to Pro, $29/month"}
+								: founder
+									? `Upgrade to Pro, $${founder.price}/month`
+									: "Upgrade to Pro, $29/month"}
 					</Button>
 				)}
 				{pro && sub?.managedByYou && (
@@ -831,10 +835,18 @@ function BillingCard() {
 					bought here.
 				</p>
 			)}
+			{!pro && founder && isAdmin && (
+				<p className="mt-3 text-sm">
+					<span className="font-medium">Founding price:</span> ${founder.price}
+					/month instead of $29, kept for as long as you stay subscribed.{" "}
+					{founder.remaining} of {founder.total} founding spots left.
+				</p>
+			)}
 			{!pro && billing?.configured && isAdmin && (
 				<p className="mt-3 text-xs text-muted-foreground">
 					Billed monthly through Polar, our payment provider, which handles
-					taxes and invoices. Cancel any time from the billing portal.
+					taxes and invoices. Cancel any time from the billing portal. Not for
+					you? Ask within 14 days of your first payment for a full refund.
 				</p>
 			)}
 		</Card>
