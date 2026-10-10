@@ -489,7 +489,7 @@ function PricingPreview() {
 				</Reveal>
 				<div className="mt-12 grid gap-4 sm:grid-cols-2 max-w-2xl mx-auto">
 					{plans.map((p, i) => (
-						<Reveal key={p.name} delay={i * 0.06}>
+						<Reveal key={p.name} delay={i * 0.06} className="h-full">
 							<Card
 								className={`h-full rounded-md p-7 transition-colors duration-200 ${
 									p.popular ? "border-brand" : "hover:border-foreground/30"

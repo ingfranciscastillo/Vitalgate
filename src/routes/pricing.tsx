@@ -87,46 +87,52 @@ function Pricing() {
 			<section className="mx-auto max-w-3xl px-5 pb-24">
 				<div className="grid sm:grid-cols-2 gap-4">
 					{plans.map((p, i) => (
-						<Reveal key={p.name} delay={i * 0.08}>
+						<Reveal key={p.name} delay={i * 0.08} className="h-full">
 							<Card
-								className={`p-7 transition-colors duration-200 ${p.popular ? "border-brand" : "hover:border-foreground/30"}`}
+								className={`flex h-full flex-col p-7 transition-colors duration-200 ${p.popular ? "border-brand" : "hover:border-foreground/30"}`}
 							>
-								<div className="flex items-center justify-between">
-									<h2 className="font-bold">{p.name}</h2>
-									{p.popular && (
-										<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-											Most popular
-										</span>
+								<div className="flex-1">
+									<div className="flex items-center justify-between">
+										<h2 className="font-bold">{p.name}</h2>
+										{p.popular && (
+											<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+												Most popular
+											</span>
+										)}
+									</div>
+									<div className="mt-3 flex items-baseline gap-1">
+										{p.popular && founder ? (
+											<>
+												<span className="font-mono text-4xl font-semibold">
+													${founder.price}
+												</span>
+												<span className="text-sm text-muted-foreground">
+													/mo
+												</span>
+												<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
+													{p.price}
+												</span>
+											</>
+										) : (
+											<>
+												<span className="font-mono text-4xl font-semibold">
+													{p.price}
+												</span>
+												<span className="text-sm text-muted-foreground">
+													/mo
+												</span>
+											</>
+										)}
+									</div>
+									{p.popular && founder && (
+										<p className="mt-2 text-xs font-medium text-brand">
+											Founding price for the first {founder.total} subscribers,
+											kept for as long as you stay subscribed.{" "}
+											{founder.remaining} left.
+										</p>
 									)}
+									<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								</div>
-								<div className="mt-3 flex items-baseline gap-1">
-									{p.popular && founder ? (
-										<>
-											<span className="font-mono text-4xl font-semibold">
-												${founder.price}
-											</span>
-											<span className="text-sm text-muted-foreground">/mo</span>
-											<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
-												{p.price}
-											</span>
-										</>
-									) : (
-										<>
-											<span className="font-mono text-4xl font-semibold">
-												{p.price}
-											</span>
-											<span className="text-sm text-muted-foreground">/mo</span>
-										</>
-									)}
-								</div>
-								{p.popular && founder && (
-									<p className="mt-2 text-xs font-medium text-brand">
-										Founding price for the first {founder.total} subscribers,
-										kept for as long as you stay subscribed. {founder.remaining}{" "}
-										left.
-									</p>
-								)}
-								<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								<Link to="/login" className="block mt-5">
 									<Button
 										className={`w-full ${p.popular ? "bg-brand text-brand-foreground hover:bg-brand/90" : ""}`}
