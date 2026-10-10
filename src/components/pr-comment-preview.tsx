@@ -1,4 +1,11 @@
-import { CheckCircleIcon, XCircleIcon } from "@phosphor-icons/react";
+import {
+	ArrowDownIcon,
+	ArrowUpIcon,
+	CheckCircleIcon,
+	WarningIcon,
+	XCircleIcon,
+} from "@phosphor-icons/react";
+import { LogoMark } from "@/components/logo";
 import { renderPrComment } from "@/lib/pr-comment";
 
 /**
@@ -39,6 +46,54 @@ const ROWS = lines
 			.map((cell) => cell.trim()),
 	);
 
+/** The comment's ✅ / ⚠️ / ❌ result marks, drawn as icons. */
+function ResultIcon({ mark }: { mark: string }) {
+	if (mark.startsWith("❌"))
+		return (
+			<XCircleIcon
+				className="mx-auto size-4 text-destructive"
+				weight="fill"
+				aria-label="Failed"
+			/>
+		);
+	if (mark.startsWith("⚠"))
+		return (
+			<WarningIcon
+				className="mx-auto size-4 text-warning"
+				weight="fill"
+				aria-label="Warning"
+			/>
+		);
+	if (mark.startsWith("✅"))
+		return (
+			<CheckCircleIcon
+				className="mx-auto size-4 text-success"
+				weight="fill"
+				aria-label="Passed"
+			/>
+		);
+	return null;
+}
+
+/**
+ * The "Change vs baseline" cell: the comment marks it 🔴 (worse) or 🟢
+ * (better); here that's the colour, with an arrow for the direction.
+ */
+function Change({ text }: { text: string }) {
+	const match = text.match(/^(.*?)\s*(🔴|🟢)$/u);
+	if (!match) return <span className="text-muted-foreground">{text}</span>;
+	const [, value, mark] = match;
+	const Arrow = value.startsWith("-") ? ArrowDownIcon : ArrowUpIcon;
+	return (
+		<span
+			className={`inline-flex items-center gap-1 ${mark === "🔴" ? "text-destructive" : "text-success"}`}
+		>
+			<Arrow className="size-3" weight="bold" aria-hidden="true" />
+			{value}
+		</span>
+	);
+}
+
 /**
  * What a pull request gets from Vitalgate: the failing "Vitalgate" check
  * and the results comment, drawn as they appear on GitHub.
@@ -47,8 +102,8 @@ export function PrCommentPreview({ repo = "acme/storefront#1042" }) {
 	return (
 		<figure className="overflow-hidden rounded-md border border-border bg-card text-left">
 			<div className="flex items-center gap-2 border-b border-border px-4 py-2.5 text-xs">
-				<span className="grid size-5 place-items-center rounded-full bg-brand font-mono text-[10px] font-bold text-brand-foreground">
-					V
+				<span className="grid size-6 place-items-center rounded-full border border-border bg-background">
+					<LogoMark className="size-4" />
 				</span>
 				<span className="font-semibold">vitalgate[bot]</span>
 				<span className="text-muted-foreground">commented on {repo}</span>
@@ -94,13 +149,13 @@ export function PrCommentPreview({ repo = "acme/storefront#1042" }) {
 										{value}
 									</td>
 									<td className="border border-border px-2.5 py-1.5 font-mono">
-										{change}
+										<Change text={change} />
 									</td>
 									<td className="border border-border px-2.5 py-1.5 font-mono">
 										{budget}
 									</td>
 									<td className="border border-border px-2.5 py-1.5 text-center">
-										{result}
+										<ResultIcon mark={result} />
 									</td>
 								</tr>
 							))}
