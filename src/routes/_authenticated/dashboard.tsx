@@ -18,6 +18,7 @@ import {
 	YAxis,
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
+import { GettingStarted } from "@/components/getting-started";
 import { Reveal } from "@/components/reveal";
 import { StatusBadge } from "@/components/status-badge";
 import { Card } from "@/components/ui/card";
@@ -51,6 +52,10 @@ function Dashboard() {
 
 	return (
 		<AppShell title="Overview">
+			<GettingStarted
+				repoFullNames={repos.map((r) => r.fullName)}
+				prCount={stats.prCount}
+			/>
 			<Reveal>
 				<div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
 					<Card className="p-5">
