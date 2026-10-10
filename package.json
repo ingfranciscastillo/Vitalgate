@@ -27,6 +27,8 @@
     "@fontsource/jetbrains-mono": "^5.3.0",
     "@neondatabase/serverless": "^1.2.0",
     "@phosphor-icons/react": "^2.1.10",
+    "@polar-sh/better-auth": "^2.1.0",
+    "@polar-sh/sdk": "^1.0.2",
     "@tailwindcss/vite": "^4.3.3",
     "@tanstack/react-devtools": "latest",
     "@tanstack/react-form": "^1.33.5",

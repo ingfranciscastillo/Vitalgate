@@ -160,7 +160,7 @@ function Alerts() {
 											</div>
 										</div>
 										{locked ? (
-											<Link to="/pricing">
+											<Link to="/settings" search={{ tab: "billing" }}>
 												<Button variant="outline" size="sm">
 													Upgrade
 												</Button>

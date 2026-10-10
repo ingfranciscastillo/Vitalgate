@@ -25,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { authClient } from "@/lib/auth-client";
+import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
 import {
 	disconnectIntegration,
@@ -44,9 +45,10 @@ import { parseUserAgent } from "@/lib/user-agent";
 export const Route = createFileRoute("/_authenticated/settings")({
 	// Only read to pick the opening tab; IntegrationsTab reads the full
 	// ?integration=&status=&reason= itself and then clears it.
-	validateSearch: (search): { integration?: string } => ({
+	validateSearch: (search): { integration?: string; tab?: string } => ({
 		integration:
 			typeof search.integration === "string" ? search.integration : undefined,
+		tab: typeof search.tab === "string" ? search.tab : undefined,
 	}),
 	head: () => ({ meta: [{ title: "Settings: Vitalgate" }] }),
 	component: Settings,
@@ -377,7 +379,7 @@ function IntegrationsTab() {
 								{connecting === "slack" ? "Connecting…" : "Connect"}
 							</Button>
 						) : (
-							<Link to="/pricing">
+							<Link to="/settings" search={{ tab: "billing" }}>
 								<Button variant="outline" size="sm">
 									Upgrade to Pro
 								</Button>
@@ -418,7 +420,7 @@ function IntegrationsTab() {
 								{connecting === "discord" ? "Connecting…" : "Connect"}
 							</Button>
 						) : (
-							<Link to="/pricing">
+							<Link to="/settings" search={{ tab: "billing" }}>
 								<Button variant="outline" size="sm">
 									Upgrade to Pro
 								</Button>
@@ -658,10 +660,70 @@ function SessionsCard() {
  */
 function BillingCard() {
 	const { data: repos, isPending } = useQuery(orgReposQueryOptions());
-	const { data: org } = authClient.useActiveOrganization();
+	const { data: org, refetch: refetchOrg } = authClient.useActiveOrganization();
+	const isAdmin = useIsOrgAdmin();
+	const [justPaid] = useState(
+		() =>
+			typeof window !== "undefined" &&
+			new URLSearchParams(window.location.search).get("checkout") === "success",
+	);
+	// After checkout, Polar's webhook usually lands within seconds: poll
+	// until the workspace shows Pro, for up to a minute.
+	const [pollUntil] = useState(() => (justPaid ? Date.now() + 60_000 : 0));
+	const { data: billing } = useQuery({
+		...billingOverviewQueryOptions(),
+		refetchInterval: (query) =>
+			query.state.data?.plan !== "pro" && Date.now() < pollUntil ? 2000 : false,
+	});
+	const [redirecting, setRedirecting] = useState<"checkout" | "portal" | null>(
+		null,
+	);
+
+	useEffect(() => {
+		if (!justPaid) return;
+		toast.success("Payment received. Pro turns on in a few seconds.");
+		window.history.replaceState({}, "", "/settings?tab=billing");
+	}, [justPaid]);
+
+	const pro = isPro(billing?.plan ?? org?.plan);
+	// Keeps the plan badge elsewhere (sidebar, limits) in step once Pro lands.
+	useEffect(() => {
+		if (billing?.plan && org && billing.plan !== org.plan) refetchOrg();
+	}, [billing?.plan, org, refetchOrg]);
+
 	const repoCount = repos?.length ?? 0;
-	const pro = isPro(org?.plan);
 	const overLimit = !pro && repoCount > FREE_REPO_LIMIT;
+	const sub = billing?.subscription;
+
+	const upgrade = async () => {
+		if (!org) return;
+		setRedirecting("checkout");
+		const { error } = await authClient.checkout({
+			slug: "pro",
+			reference_id: org.id,
+		});
+		if (error) {
+			toast.error(error.message ?? "Could not open checkout");
+			setRedirecting(null);
+		}
+	};
+
+	const manage = async () => {
+		setRedirecting("portal");
+		const { error } = await authClient.customer.portal();
+		if (error) {
+			toast.error(error.message ?? "Could not open billing");
+			setRedirecting(null);
+		}
+	};
+
+	const periodEnd = sub?.currentPeriodEnd
+		? new Date(sub.currentPeriodEnd).toLocaleDateString("en-US", {
+				month: "long",
+				day: "numeric",
+				year: "numeric",
+			})
+		: null;
 
 	return (
 		<Card className="p-6 max-w-xl">
@@ -677,6 +739,26 @@ function BillingCard() {
 					<span className="text-muted-foreground text-sm">/mo</span>
 				</span>
 			</div>
+
+			{pro && sub && (
+				<p
+					className={`mt-3 text-sm ${sub.status === "past_due" ? "text-destructive" : "text-muted-foreground"}`}
+				>
+					{sub.status === "past_due"
+						? "Your last payment failed. Update your card to stay on Pro."
+						: sub.cancelAtPeriodEnd && periodEnd
+							? `Canceled. Pro stays on until ${periodEnd}.`
+							: periodEnd
+								? `Renews on ${periodEnd}.`
+								: null}
+				</p>
+			)}
+			{pro && !sub && (
+				<p className="mt-3 text-sm text-muted-foreground">
+					Pro was turned on for this workspace without a subscription.
+				</p>
+			)}
+
 			<div className="mt-6">
 				<div className="text-xs text-muted-foreground">
 					Repositories connected
@@ -697,24 +779,70 @@ function BillingCard() {
 					</p>
 				)}
 			</div>
-			{!pro && (
-				<div className="mt-6">
+
+			<div className="mt-6 flex flex-wrap items-center gap-3">
+				{!pro && billing?.configured && isAdmin && (
+					<Button
+						className="bg-brand text-brand-foreground hover:bg-brand/90"
+						disabled={redirecting !== null || justPaid}
+						onClick={upgrade}
+					>
+						{redirecting === "checkout"
+							? "Opening checkout…"
+							: justPaid
+								? "Activating Pro…"
+								: "Upgrade to Pro, $29/month"}
+					</Button>
+				)}
+				{pro && sub?.managedByYou && (
+					<Button
+						variant="outline"
+						disabled={redirecting !== null}
+						onClick={manage}
+					>
+						{redirecting === "portal"
+							? "Opening billing…"
+							: "Manage billing and invoices"}
+					</Button>
+				)}
+				{pro && sub && !sub.managedByYou && (
+					<p className="text-xs text-muted-foreground">
+						Billing is managed by the person who subscribed.
+					</p>
+				)}
+				{!pro && isAdmin === false && (
+					<p className="text-xs text-muted-foreground">
+						Ask a workspace owner or admin to upgrade.
+					</p>
+				)}
+				{!pro && (
 					<Link to="/pricing">
-						<Button variant="outline">See plans</Button>
+						<Button variant="ghost">Compare plans</Button>
 					</Link>
-				</div>
+				)}
+			</div>
+			{!pro && billing?.configured && isAdmin && (
+				<p className="mt-3 text-xs text-muted-foreground">
+					Billed monthly through Polar, our payment provider, which handles
+					taxes and invoices. Cancel any time from the billing portal.
+				</p>
 			)}
 		</Card>
 	);
 }
 
 function Settings() {
-	const { integration } = Route.useSearch();
-	const initialTab = integration ? "integrations" : "org";
+	const { integration, tab } = Route.useSearch();
+	const initialTab = integration
+		? "integrations"
+		: tab === "billing" || tab === "notifications"
+			? tab
+			: "org";
 	return (
 		<AppShell title="Settings">
 			{/* Integration callbacks land on ?integration=…; open that tab so its toast shows. */}
-			<Tabs defaultValue={initialTab}>
+			{/* Keyed so an in-page link to ?tab=billing switches tabs too. */}
+			<Tabs key={initialTab} defaultValue={initialTab}>
 				<TabsList>
 					<TabsTrigger value="org">Organization</TabsTrigger>
 					<TabsTrigger value="integrations">Integrations</TabsTrigger>

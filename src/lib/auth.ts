@@ -6,6 +6,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
+import { polarPlugins } from "@/lib/billing.server";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
 import { sendWelcomeEmail } from "@/lib/lifecycle.server";
@@ -161,9 +162,9 @@ export const auth = betterAuth({
 				organization: {
 					additionalFields: {
 						// Billing plan for the org. input: false keeps it out of the
-						// create/update organization API — nothing except server-side
-						// code (there's no billing webhook yet, so today that means a
-						// manual DB update) should ever change this.
+						// create/update organization API — only server-side code
+						// changes it: Polar's subscription webhooks
+						// (billing.server.ts), or a manual DB update.
 						plan: {
 							type: "string",
 							required: true,
@@ -174,6 +175,8 @@ export const auth = betterAuth({
 				},
 			},
 		}),
+		// Pro billing (Polar); absent when its env vars aren't set.
+		...polarPlugins(),
 		tanstackStartCookies(),
 	],
 });

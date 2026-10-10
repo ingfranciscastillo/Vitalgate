@@ -54,7 +54,7 @@ export function RepoLimitDialog({
 								Maybe later
 							</Button>
 						</Dialog.Close>
-						<Link to="/pricing" className="flex-1">
+						<Link to="/settings" search={{ tab: "billing" }} className="flex-1">
 							<Button className="w-full bg-brand text-brand-foreground hover:bg-brand/90">
 								Upgrade to Pro
 							</Button>

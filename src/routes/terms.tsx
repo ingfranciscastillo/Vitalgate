@@ -24,7 +24,7 @@ export const Route = createFileRoute("/terms")({
 	component: Terms,
 });
 
-const EFFECTIVE_DATE = "October 9, 2026";
+const EFFECTIVE_DATE = "October 10, 2026";
 
 function Terms() {
 	return (
@@ -198,10 +198,27 @@ function Terms() {
 								<Link to="/pricing" className="text-primary hover:underline">
 									pricing page
 								</Link>
-								. Online payment isn't available yet. Before we charge anything,
-								we'll show you the price, billing period, renewal, and refund
-								terms, and you'll have to accept them explicitly — nothing is
-								billed automatically under these terms.
+								.
+							</p>
+							<p>
+								Pro is a monthly subscription for one workspace, sold through
+								Polar (polar.sh), which acts as our merchant of record: it takes
+								the payment, charges any sales tax or VAT, and issues your
+								invoices. Polar's own terms also apply to the purchase. The
+								price and billing period are shown before you pay.
+							</p>
+							<p>
+								Your subscription renews every month until you cancel it. You
+								can cancel any time from Settings, Billing, and Pro stays on
+								until the end of the month you've paid for; we don't refund
+								partial months. If a payment fails, Pro stays on while Polar
+								retries it, and the workspace moves back to the Free plan if it
+								can't be collected.
+							</p>
+							<p>
+								We may change the price of Pro. We'll tell you at least 30 days
+								before a new price applies to your subscription, and you can
+								cancel before then.
 							</p>
 							<p>
 								We may change what each plan includes. If a change reduces what

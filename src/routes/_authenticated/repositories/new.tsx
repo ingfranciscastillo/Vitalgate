@@ -705,7 +705,8 @@ function ConnectRepo() {
 									connected.{" "}
 									{remainingFree === 0 && (
 										<Link
-											to="/pricing"
+											to="/settings"
+											search={{ tab: "billing" }}
 											className="text-primary hover:underline"
 										>
 											Upgrade to Pro
@@ -742,7 +743,11 @@ function ConnectRepo() {
 								· Free plan: {FREE_REPO_LIMIT} repository ({connectedCount}{" "}
 								connected){" "}
 								{remainingFree === 0 && (
-									<Link to="/pricing" className="text-primary hover:underline">
+									<Link
+										to="/settings"
+										search={{ tab: "billing" }}
+										className="text-primary hover:underline"
+									>
 										Upgrade to Pro
 									</Link>
 								)}

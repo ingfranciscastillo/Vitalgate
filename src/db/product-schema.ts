@@ -231,6 +231,30 @@ export const lifecycleEmails = pgTable("lifecycle_emails", {
 	sentAt: timestamp("sent_at").defaultNow().notNull(),
 });
 
+/**
+ * A workspace's Polar subscription, kept in sync by Polar's webhooks
+ * (billing.server.ts). organization.plan is derived from its status; this
+ * row is what the Billing tab shows (renewal date, pending cancellation).
+ */
+export const orgSubscriptions = pgTable("org_subscriptions", {
+	organizationId: text("organization_id")
+		.primaryKey()
+		.references(() => organization.id, { onDelete: "cascade" }),
+	polarSubscriptionId: text("polar_subscription_id").notNull().unique(),
+	/** Polar's subscription status: active, trialing, past_due, canceled… */
+	status: text("status").notNull(),
+	productId: text("product_id").notNull(),
+	/** The user who checked out — the Polar customer, who manages billing. */
+	customerUserId: text("customer_user_id").references(() => user.id, {
+		onDelete: "set null",
+	}),
+	currentPeriodEnd: timestamp("current_period_end"),
+	cancelAtPeriodEnd: boolean("cancel_at_period_end").notNull().default(false),
+	/** Polar's modified_at of the last event applied, to ignore out-of-order deliveries. */
+	polarModifiedAt: timestamp("polar_modified_at"),
+	updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const reposRelations = relations(repos, ({ many, one }) => ({
 	organization: one(organization, {
 		fields: [repos.organizationId],

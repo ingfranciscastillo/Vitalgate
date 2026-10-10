@@ -123,9 +123,15 @@ base64 -w0 your-app.private-key.pem   # → GITHUB_APP_PRIVATE_KEY
 
 In [Google Cloud Console](https://console.cloud.google.com/), enable the **Chrome UX Report API** for a project, create an API key under **APIs & Services → Credentials** (restrict it to that API), and set it as `CRUX_API_KEY`. Each repository's production URL is prefilled from its GitHub **Website** field and can be changed in its Settings. CrUX only covers public sites with enough Chrome traffic; answers are cached for a day per repository.
 
-### Plans
+### Plans and billing (Polar)
 
-A workspace's plan is the `plan` column of the `organization` table (`free` or `pro`). There is no billing integration yet; change it directly in the database:
+A workspace's plan is the `plan` column of the `organization` table (`free` or `pro`). Pro is sold through [Polar](https://polar.sh) with the [Better Auth adapter](https://polar.sh/docs/integrate/sdk/adapters/better-auth): an owner or admin checks out from **Settings → Billing**, the workspace id travels as the checkout's `reference_id`, and Polar's subscription webhooks set the plan and fill `org_subscriptions`.
+
+1. In Polar (start in the [sandbox](https://sandbox.polar.sh)), create a monthly **Pro** product and set `POLAR_PRO_PRODUCT_ID`.
+2. Create an organization access token and set `POLAR_ACCESS_TOKEN` (and `POLAR_ENVIRONMENT=production` for live payments).
+3. Add a webhook to `$BETTER_AUTH_URL/api/auth/polar/webhooks` with the `subscription.*` events, and set `POLAR_WEBHOOK_SECRET`.
+
+Without these variables the Billing tab shows the plan only. To grant Pro by hand, update the column directly:
 
 ```sql
 UPDATE organization SET plan = 'pro' WHERE slug = '<workspace-slug>';

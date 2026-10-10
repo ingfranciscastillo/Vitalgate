@@ -23,7 +23,7 @@ export const Route = createFileRoute("/privacy-policy")({
 	component: PrivacyPolicy,
 });
 
-const EFFECTIVE_DATE = "October 9, 2026";
+const EFFECTIVE_DATE = "October 10, 2026";
 
 function ContactEmail() {
 	return (
@@ -199,6 +199,12 @@ function PrivacyPolicy() {
 								<li>
 									<strong>Resend</strong> — sends alert, invitation, and weekly
 									digest emails, and delivers contact form messages to us.
+								</li>
+								<li>
+									<strong>Polar</strong> — only if you subscribe to Pro: takes
+									the payment as merchant of record, with your name, email, and
+									billing details. We never see your card number; we keep only
+									the subscription's status and renewal date.
 								</li>
 								<li>
 									<strong>Slack / Discord</strong> — only if you connect them,
