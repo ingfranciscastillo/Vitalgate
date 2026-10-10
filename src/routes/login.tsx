@@ -9,6 +9,7 @@ import { createFileRoute, Link, redirect } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useState } from "react";
 import { Logo } from "@/components/logo";
+import { PrCommentPreview } from "@/components/pr-comment-preview";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { Button } from "@/components/ui/button";
 import { getSession } from "@/lib/auth.functions";
@@ -106,15 +107,18 @@ function Login() {
 					variants={item}
 					className="flex flex-1 items-center justify-center py-10"
 				>
-					<PrCheckPreview />
+					<div className="w-full max-w-xl">
+						<PrCommentPreview />
+					</div>
 				</motion.div>
 
 				<motion.p
 					variants={item}
 					className="max-w-md text-sm leading-relaxed text-muted-foreground"
 				>
-					Lighthouse runs on your own GitHub Actions runner. Only the resulting
-					metrics are sent back to Vitalgate and checked against your budgets.
+					Lighthouse runs on your own GitHub Actions runner or against your
+					preview deployment. Only the resulting metrics are sent back to
+					Vitalgate and checked against your budgets.
 				</motion.p>
 			</motion.aside>
 
@@ -137,14 +141,14 @@ function Login() {
 							variants={item}
 							className="text-3xl font-extrabold tracking-tight sm:text-4xl"
 						>
-							Welcome back
+							Get started with Vitalgate
 						</motion.h1>
 						<motion.p
 							variants={item}
 							className="mt-3 text-sm leading-relaxed text-muted-foreground"
 						>
-							Sign in with GitHub to keep performance budgets enforced on every
-							pull request.
+							One GitHub sign-in, whether you're new or coming back. Free for
+							one repository, no credit card.
 						</motion.p>
 
 						<motion.div variants={item}>
@@ -221,47 +225,6 @@ function Login() {
 					© {new Date().getFullYear()} Vitalgate
 				</div>
 			</section>
-		</div>
-	);
-}
-
-function PrCheckPreview() {
-	return (
-		<div className="w-full max-w-md border border-border bg-card transition-colors duration-200 hover:border-foreground/25">
-			<div className="flex items-center gap-2 border-b border-border bg-muted/40 px-4 py-2.5 font-mono text-xs text-muted-foreground">
-				<div className="flex gap-1.5">
-					<span className="h-2.5 w-2.5 rounded-full bg-destructive/60" />
-					<span className="h-2.5 w-2.5 rounded-full bg-warning/70" />
-					<span className="h-2.5 w-2.5 rounded-full bg-success/70" />
-				</div>
-				<span className="ml-3">acme/web, PR #1247</span>
-			</div>
-			<div className="grid grid-cols-2 divide-x divide-y divide-border">
-				{[
-					{ k: "LCP", v: "3.42s", d: "+38%", bad: true },
-					{ k: "INP", v: "182ms", d: "-4%", bad: false },
-					{ k: "CLS", v: "0.07", d: "+0.01", bad: false },
-					{ k: "Score", v: "71", d: "-19", bad: true },
-				].map((m) => (
-					<div key={m.k} className="p-4">
-						<div className="text-[10px] uppercase tracking-wider text-muted-foreground">
-							{m.k}
-						</div>
-						<div className="mt-1.5 font-mono text-xl font-semibold">{m.v}</div>
-						<div
-							className={`mt-0.5 font-mono text-[11px] ${m.bad ? "text-destructive" : "text-success"}`}
-						>
-							{m.d} vs main
-						</div>
-					</div>
-				))}
-			</div>
-			<div className="border-t border-border bg-muted/30 p-3 font-mono text-[11px]">
-				<div className="text-destructive">
-					✗ LCP budget exceeded, blocking merge
-				</div>
-				<div className="text-success">✓ INP within budget</div>
-			</div>
 		</div>
 	);
 }
