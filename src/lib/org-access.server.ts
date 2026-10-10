@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { member } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
-import { isAdminRole } from "@/lib/org-roles";
+import { isAdminRole } from "@/lib/roles";
 
 /**
  * Throws unless the signed-in user is an owner or admin of their active

@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { account, githubInstallations, member } from "@/db/schema";
 import { auth } from "@/lib/auth";
 import { getInstallation } from "@/lib/github-app.server";
-import { isAdminRole } from "@/lib/org-roles";
+import { isAdminRole } from "@/lib/roles";
 
 /**
  * Links a GitHub App installation to a workspace — but only after proving

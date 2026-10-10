@@ -7,6 +7,7 @@ import {
 	GearIcon,
 	GitPullRequestIcon,
 	ListIcon,
+	PlusIcon,
 	SignOutIcon,
 	SquaresFourIcon,
 	UsersIcon,
@@ -23,6 +24,8 @@ import { Dialog, DropdownMenu } from "radix-ui";
 import { type ComponentType, type ReactNode, useState } from "react";
 import toast from "react-hot-toast";
 import { authClient } from "@/lib/auth-client";
+import { isPro } from "@/lib/plan";
+import { CreateWorkspaceDialog } from "./create-workspace-dialog";
 import { HeaderSearch } from "./header-search";
 import { Logo } from "./logo";
 import { NotificationBell } from "./notification-bell";
@@ -92,6 +95,11 @@ function WorkspaceSwitcher() {
 	const queryClient = useQueryClient();
 	const router = useRouter();
 	const [switching, setSwitching] = useState(false);
+	const [creating, setCreating] = useState(false);
+	const navigate = useNavigate();
+	// Mirrors the server rule (allowUserToCreateOrganization in auth.ts),
+	// which also requires being an owner/admin of that Pro workspace.
+	const canCreate = (orgs ?? []).some((o) => isPro(o.plan));
 	const name = isPending ? "" : (activeOrg?.name ?? "No workspace");
 	const initial = name ? name.charAt(0).toUpperCase() : "?";
 
@@ -154,8 +162,24 @@ function WorkspaceSwitcher() {
 							)}
 						</DropdownMenu.Item>
 					))}
+					<DropdownMenu.Separator className="my-1 h-px bg-border" />
+					<DropdownMenu.Item
+						onSelect={() =>
+							canCreate ? setCreating(true) : navigate({ to: "/pricing" })
+						}
+						className="flex cursor-pointer items-center gap-2 rounded-sm px-2 py-1.5 outline-none data-highlighted:bg-accent data-highlighted:text-accent-foreground"
+					>
+						<PlusIcon className="size-3.5 shrink-0" weight="bold" />
+						<span>Create workspace</span>
+						{!canCreate && (
+							<span className="ml-auto rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-medium text-brand">
+								Pro
+							</span>
+						)}
+					</DropdownMenu.Item>
 				</DropdownMenu.Content>
 			</DropdownMenu.Portal>
+			<CreateWorkspaceDialog open={creating} onOpenChange={setCreating} />
 		</DropdownMenu.Root>
 	);
 }

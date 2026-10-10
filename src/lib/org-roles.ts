@@ -1,18 +1,7 @@
 import { authClient } from "@/lib/auth-client";
+import { isAdminRole } from "@/lib/roles";
 
-/**
- * Roles allowed to change a workspace's configuration: connect/disconnect
- * repos, mint/revoke CI tokens, connect integrations, toggle alert rules.
- * Plain members can see everything in the workspace but not change it.
- * Enforced server-side by requireOrgAdmin (org-access.server.ts); the hook
- * below only decides what the UI offers.
- */
-const ADMIN_ROLES = new Set(["owner", "admin"]);
-
-/** better-auth stores multiple roles as a comma-separated string. */
-export function isAdminRole(role: string): boolean {
-	return role.split(",").some((r) => ADMIN_ROLES.has(r.trim()));
-}
+export { isAdminRole };
 
 /** Whether the signed-in user can change the active workspace's config; undefined while loading. */
 export function useIsOrgAdmin(): boolean | undefined {

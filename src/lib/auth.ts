@@ -2,12 +2,13 @@ import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { betterAuth } from "better-auth";
 import { organization } from "better-auth/plugins/organization";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import * as schema from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { sendEmail } from "@/lib/email.server";
 import { escapeHtml } from "@/lib/html";
+import { isAdminRole } from "@/lib/roles";
 
 function slugify(input: string) {
 	return input
@@ -119,7 +120,26 @@ export const auth = betterAuth({
 		// custom-role/access-control decision, not made yet. Members keep the
 		// UI label as display text until real permission checks are designed.
 		organization({
-			allowUserToCreateOrganization: true,
+			// Extra workspaces are a Pro perk: each one comes with its own Free
+			// plan, so otherwise anyone could stack free repos across workspaces.
+			// The personal workspace made at sign-up is a server-side call with
+			// a userId and no session, which better-auth doesn't run this for.
+			allowUserToCreateOrganization: async (user) => {
+				const proMemberships = await db
+					.select({ role: schema.member.role })
+					.from(schema.member)
+					.innerJoin(
+						schema.organization,
+						eq(schema.member.organizationId, schema.organization.id),
+					)
+					.where(
+						and(
+							eq(schema.member.userId, user.id),
+							eq(schema.organization.plan, "pro"),
+						),
+					);
+				return proMemberships.some((m) => isAdminRole(m.role));
+			},
 			// The link lands on /accept-invitation/$invitationId, which sends
 			// signed-out visitors through GitHub sign-in first. better-auth only
 			// lets the invitation be accepted by a user whose account email
