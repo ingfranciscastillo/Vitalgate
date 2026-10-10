@@ -16,12 +16,19 @@ import { isAdminRole } from "@/lib/roles";
  * POLAR_ENVIRONMENT ("sandbox" or "production"; sandbox unless set).
  */
 export function isBillingConfigured(): boolean {
-	return Boolean(
-		process.env.POLAR_ACCESS_TOKEN &&
-			process.env.POLAR_WEBHOOK_SECRET &&
-			process.env.POLAR_PRO_PRODUCT_ID,
-	);
+	const missing = REQUIRED_ENV.filter((name) => !process.env[name]);
+	if (missing.length > 0 && missing.length < REQUIRED_ENV.length) {
+		// Half-configured is almost always a mistake worth a log line.
+		console.warn(`Polar billing is off: ${missing.join(", ")} not set`);
+	}
+	return missing.length === 0;
 }
+
+const REQUIRED_ENV = [
+	"POLAR_ACCESS_TOKEN",
+	"POLAR_WEBHOOK_SECRET",
+	"POLAR_PRO_PRODUCT_ID",
+] as const;
 
 /** Statuses that keep a workspace on Pro. past_due stays Pro while Polar retries the payment. */
 const PRO_STATUSES = new Set(["active", "trialing", "past_due"]);

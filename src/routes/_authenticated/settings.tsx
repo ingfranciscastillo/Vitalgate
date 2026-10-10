@@ -817,10 +817,16 @@ function BillingCard() {
 				)}
 				{!pro && (
 					<Link to="/pricing">
-						<Button variant="ghost">Compare plans</Button>
+						<Button variant="outline">Compare plans</Button>
 					</Link>
 				)}
 			</div>
+			{!pro && billing && !billing.configured && isAdmin && (
+				<p className="mt-3 text-xs text-warning-foreground">
+					Online payments aren't set up on this server yet, so Pro can't be
+					bought here.
+				</p>
+			)}
 			{!pro && billing?.configured && isAdmin && (
 				<p className="mt-3 text-xs text-muted-foreground">
 					Billed monthly through Polar, our payment provider, which handles
