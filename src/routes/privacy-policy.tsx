@@ -72,8 +72,7 @@ function PrivacyPolicy() {
 							<p>
 								<strong>Account info.</strong> When you sign in with GitHub, we
 								receive and store your name, email address, and avatar URL from
-								GitHub. We never see your GitHub password. If you set a password
-								in Settings, we store only a hash of it.
+								GitHub. We never see your GitHub password.
 							</p>
 							<p>
 								<strong>GitHub access.</strong> Signing in gives Vitalgate an
@@ -245,11 +244,10 @@ function PrivacyPolicy() {
 							<p>
 								Traffic to the site is encrypted with HTTPS. Slack and Discord
 								webhook URLs and GitHub sign-in tokens are encrypted at rest.
-								Passwords, if set, are stored only as hashes. Every request for
-								workspace data is checked against your active workspace, so one
-								workspace can't read another's data. No system is perfectly
-								secure; if a breach affects your personal data, we'll tell you
-								without undue delay.
+								Every request for workspace data is checked against your active
+								workspace, so one workspace can't read another's data. No system
+								is perfectly secure; if a breach affects your personal data,
+								we'll tell you without undue delay.
 							</p>
 						</section>
 

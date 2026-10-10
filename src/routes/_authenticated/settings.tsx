@@ -19,7 +19,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { setInitialPassword } from "@/lib/auth.functions";
 import { authClient } from "@/lib/auth-client";
 import { timeAgo } from "@/lib/format";
 import {
@@ -427,146 +426,6 @@ function IntegrationsTab() {
 	);
 }
 
-function SecurityCard() {
-	const queryClient = useQueryClient();
-	const { data: accounts, isPending } = useQuery({
-		queryKey: ["accounts"],
-		queryFn: async () => {
-			const { data, error } = await authClient.listAccounts();
-			if (error) throw new Error(error.message ?? "Could not load accounts");
-			return data;
-		},
-	});
-	// Every current user signed up via GitHub — no credential (email+password)
-	// account exists yet. Setting one (no current password to verify) and
-	// changing one (must verify the current password) are different
-	// better-auth calls, so which form renders depends on this.
-	const hasPassword =
-		accounts?.some((a) => a.providerId === "credential") ?? false;
-
-	const [currentPassword, setCurrentPassword] = useState("");
-	const [newPassword, setNewPassword] = useState("");
-	const [confirmPassword, setConfirmPassword] = useState("");
-	const [saving, setSaving] = useState(false);
-	const [shake, setShake] = useState(false);
-
-	const reset = () => {
-		setCurrentPassword("");
-		setNewPassword("");
-		setConfirmPassword("");
-	};
-
-	const handleSubmit = async () => {
-		if (newPassword.length < 8) {
-			toast.error("Password must be at least 8 characters");
-			setShake(true);
-			return;
-		}
-		if (newPassword !== confirmPassword) {
-			toast.error("Passwords don't match");
-			setShake(true);
-			return;
-		}
-
-		setSaving(true);
-		if (hasPassword) {
-			const { error } = await authClient.changePassword({
-				currentPassword,
-				newPassword,
-			});
-			setSaving(false);
-			if (error) {
-				toast.error(error.message ?? "Could not change password");
-				return;
-			}
-			toast.success("Password changed");
-		} else {
-			try {
-				await setInitialPassword({ data: { newPassword } });
-			} catch (err) {
-				setSaving(false);
-				toast.error(
-					err instanceof Error ? err.message : "Could not set password",
-				);
-				return;
-			}
-			setSaving(false);
-			queryClient.invalidateQueries({ queryKey: ["accounts"] });
-			toast.success("Password set");
-		}
-		reset();
-	};
-
-	return (
-		<Card
-			className={`p-6 max-w-xl ${shake ? "animate-shake" : ""}`}
-			onAnimationEnd={() => setShake(false)}
-		>
-			<h2 className="font-semibold">Password</h2>
-			<p className="mt-1 text-xs text-muted-foreground">
-				{isPending
-					? "Loading…"
-					: hasPassword
-						? "Change the password used to sign in with email."
-						: "You signed up with GitHub and have no password yet — set one to also sign in with email."}
-			</p>
-			{!isPending && (
-				<div className="mt-4 grid gap-4">
-					{hasPassword && (
-						<div>
-							<Label htmlFor="current-password">Current password</Label>
-							<Input
-								id="current-password"
-								type="password"
-								value={currentPassword}
-								onChange={(e) => setCurrentPassword(e.target.value)}
-								className="mt-1.5"
-							/>
-						</div>
-					)}
-					<div>
-						<Label htmlFor="new-password">New password</Label>
-						<Input
-							id="new-password"
-							type="password"
-							value={newPassword}
-							onChange={(e) => setNewPassword(e.target.value)}
-							className="mt-1.5"
-						/>
-					</div>
-					<div>
-						<Label htmlFor="confirm-password">Confirm new password</Label>
-						<Input
-							id="confirm-password"
-							type="password"
-							value={confirmPassword}
-							onChange={(e) => setConfirmPassword(e.target.value)}
-							className="mt-1.5"
-						/>
-					</div>
-					<div className="pt-2">
-						<Button
-							onClick={handleSubmit}
-							disabled={
-								saving ||
-								!newPassword ||
-								!confirmPassword ||
-								(hasPassword && !currentPassword)
-							}
-						>
-							{saving
-								? "Saving…"
-								: hasPassword
-									? "Change password"
-									: "Set password"}
-						</Button>
-					</div>
-				</div>
-			)}
-		</Card>
-	);
-}
-
 /**
  * better-auth's /list-sessions requires a "fresh" session (created within
  * the last 24h — see session config's freshAge) and throws
@@ -830,9 +689,6 @@ function Settings() {
 
 				<TabsContent value="security" className="mt-6 space-y-4">
 					<Reveal>
-						<SecurityCard />
-					</Reveal>
-					<Reveal delay={0.05}>
 						<SessionsCard />
 					</Reveal>
 				</TabsContent>
