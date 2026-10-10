@@ -22,6 +22,8 @@ import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticat
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation/$invitationId'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as CompareIndexRouteImport } from './routes/compare/index'
+import { Route as CompareSlugRouteImport } from './routes/compare/$slug'
 import { Route as ToolsCoreWebVitalsRouteImport } from './routes/tools/core-web-vitals'
 import { Route as AuthenticatedPullsIndexRouteImport } from './routes/_authenticated/pulls/index'
 import { Route as AuthenticatedPullsPrIdRouteImport } from './routes/_authenticated/pulls/$prId'
@@ -99,6 +101,16 @@ const AcceptInvitationInvitationIdRoute =
 const ApiIngestRoute = ApiIngestRouteImport.update({
   id: '/api/ingest',
   path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareIndexRoute = CompareIndexRouteImport.update({
+  id: '/compare/',
+  path: '/compare/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareSlugRoute = CompareSlugRouteImport.update({
+  id: '/compare/$slug',
+  path: '/compare/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ToolsCoreWebVitalsRoute = ToolsCoreWebVitalsRouteImport.update({
@@ -185,7 +197,9 @@ export interface FileRoutesByFullPath {
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
+  '/compare/': typeof CompareIndexRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -212,7 +226,9 @@ export interface FileRoutesByTo {
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
+  '/compare': typeof CompareIndexRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -241,7 +257,9 @@ export interface FileRoutesById {
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
+  '/compare/': typeof CompareIndexRoute
   '/_authenticated/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/_authenticated/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
   '/_authenticated/repositories/new': typeof AuthenticatedRepositoriesNewRoute
@@ -270,7 +288,9 @@ export interface FileRouteTypes {
     | '/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/compare/$slug'
     | '/tools/core-web-vitals'
+    | '/compare/'
     | '/pulls/$prId'
     | '/repositories/$repoId'
     | '/repositories/new'
@@ -297,7 +317,9 @@ export interface FileRouteTypes {
     | '/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/compare/$slug'
     | '/tools/core-web-vitals'
+    | '/compare'
     | '/pulls/$prId'
     | '/repositories/$repoId'
     | '/repositories/new'
@@ -325,7 +347,9 @@ export interface FileRouteTypes {
     | '/_authenticated/team'
     | '/accept-invitation/$invitationId'
     | '/api/ingest'
+    | '/compare/$slug'
     | '/tools/core-web-vitals'
+    | '/compare/'
     | '/_authenticated/pulls/$prId'
     | '/_authenticated/repositories/$repoId'
     | '/_authenticated/repositories/new'
@@ -350,7 +374,9 @@ export interface RootRouteChildren {
   TermsRoute: typeof TermsRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiIngestRoute: typeof ApiIngestRoute
+  CompareSlugRoute: typeof CompareSlugRoute
   ToolsCoreWebVitalsRoute: typeof ToolsCoreWebVitalsRoute
+  CompareIndexRoute: typeof CompareIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronDailyDigestRoute: typeof ApiCronDailyDigestRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
@@ -451,6 +477,20 @@ declare module '@tanstack/react-router' {
       path: '/api/ingest'
       fullPath: '/api/ingest'
       preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/': {
+      id: '/compare/'
+      path: '/compare'
+      fullPath: '/compare/'
+      preLoaderRoute: typeof CompareIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare/$slug': {
+      id: '/compare/$slug'
+      path: '/compare/$slug'
+      fullPath: '/compare/$slug'
+      preLoaderRoute: typeof CompareSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tools/core-web-vitals': {
@@ -585,7 +625,9 @@ const rootRouteChildren: RootRouteChildren = {
   TermsRoute: TermsRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiIngestRoute: ApiIngestRoute,
+  CompareSlugRoute: CompareSlugRoute,
   ToolsCoreWebVitalsRoute: ToolsCoreWebVitalsRoute,
+  CompareIndexRoute: CompareIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronDailyDigestRoute: ApiCronDailyDigestRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,

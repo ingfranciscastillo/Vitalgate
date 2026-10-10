@@ -86,6 +86,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
 									Core Web Vitals checker
 								</Link>
 								<Link
+									to="/compare"
+									className={`${linkUnderline} text-foreground/80`}
+								>
+									Compare
+								</Link>
+								<Link
 									to="/login"
 									className={`${linkUnderline} text-foreground/80`}
 								>
