@@ -1,7 +1,6 @@
 import {
 	DesktopIcon,
 	DiscordLogoIcon,
-	EnvelopeSimpleIcon,
 	GithubLogoIcon,
 	SlackLogoIcon,
 	XIcon,
@@ -421,25 +420,6 @@ function IntegrationsTab() {
 								</Button>
 							</Link>
 						)}
-					</IntegrationCardShell>
-				</motion.div>
-
-				<motion.div variants={staggerItem(reduce)}>
-					<IntegrationCardShell
-						icon={EnvelopeSimpleIcon}
-						name="Email digest"
-						connected={data.emailDigest.enabled}
-						desc={
-							data.emailDigest.enabled
-								? "Weekly, to every org member"
-								: "Off — enable under Alert rules"
-						}
-					>
-						<Link to="/alerts">
-							<Button variant="outline" size="sm">
-								Manage
-							</Button>
-						</Link>
 					</IntegrationCardShell>
 				</motion.div>
 			</motion.div>

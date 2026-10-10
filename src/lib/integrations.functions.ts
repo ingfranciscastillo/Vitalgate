@@ -3,7 +3,6 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { account, githubInstallations, integrations, repos } from "@/db/schema";
-import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import { ensureSession } from "@/lib/auth.functions";
 import { getInstallUrl, isGithubAppConfigured } from "@/lib/github-app.server";
 import {
@@ -28,8 +27,6 @@ export interface IntegrationsOverview {
 	};
 	slack: { connected: boolean; label: string | null };
 	discord: { connected: boolean; label: string | null };
-	/** Whether the org's weekly_digest alert rule is on — actual control lives on /alerts, this just reflects it. */
-	emailDigest: { enabled: boolean };
 	/** Slack/Discord are Pro-only; the client uses this to show an upgrade prompt instead of a Connect button. */
 	plan: Plan;
 }
@@ -40,7 +37,7 @@ export const getIntegrationsOverview = createServerFn({
 	const session = await ensureSession();
 	const organizationId = session.session.activeOrganizationId;
 
-	const [[githubAccount], connected, orgRepos, rules, plan, installations] =
+	const [[githubAccount], connected, orgRepos, plan, installations] =
 		await Promise.all([
 			db
 				.select({ id: account.id })
@@ -67,7 +64,6 @@ export const getIntegrationsOverview = createServerFn({
 						.from(repos)
 						.where(eq(repos.organizationId, organizationId))
 				: Promise.resolve([]),
-			organizationId ? getOrgAlertRules(organizationId) : Promise.resolve([]),
 			organizationId
 				? getOrgPlan(organizationId)
 				: Promise.resolve("free" as const),
@@ -98,9 +94,6 @@ export const getIntegrationsOverview = createServerFn({
 		discord: {
 			connected: byProvider.has("discord"),
 			label: byProvider.get("discord") ?? null,
-		},
-		emailDigest: {
-			enabled: rules.find((r) => r.key === "weekly_digest")?.enabled ?? false,
 		},
 		plan,
 	};
