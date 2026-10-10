@@ -29,6 +29,14 @@ export interface Competitor {
 	sections: { title: string; body: string }[];
 	themBestFor: string[];
 	vitalgateBestFor: string[];
+	/** How to switch from this competitor, for pages where people commonly do. */
+	migration?: {
+		intro: string;
+		steps: { title: string; body: string }[];
+		/** Their config names → Vitalgate budgets. */
+		mapping?: { from: string; to: string }[];
+		note?: string;
+	};
 }
 
 const VITALGATE_PRICING =
@@ -115,6 +123,51 @@ export const COMPETITORS: Competitor[] = [
 			"Auditing Vercel, Netlify or Render previews without building in CI",
 			"Alerts and trends without hosting anything",
 		],
+		migration: {
+			intro:
+				"Already running Lighthouse CI? Switching takes a few minutes per repository, and your thresholds carry over.",
+			steps: [
+				{
+					title: "Connect the repository",
+					body: "Install the Vitalgate GitHub App on the repository and connect it. Vitalgate commits .github/workflows/vitalgate.yml, or audits your preview deployments if Vercel, Netlify or Render already builds them.",
+				},
+				{
+					title: "Copy your assertions into budgets",
+					body: "Open the repository's Budgets tab and enter the thresholds from your lighthouserc file, using the mapping below. An assertion at the error level becomes a required budget; warn becomes a warning.",
+				},
+				{
+					title: "Swap the required check",
+					body: 'In your branch protection rules, require the "Vitalgate" check instead of the Lighthouse CI status.',
+				},
+				{
+					title: "Remove what you no longer need",
+					body: "Delete your Lighthouse CI workflow, the LHCI_GITHUB_APP_TOKEN or LHCI_GITHUB_TOKEN secret, and the Lighthouse CI GitHub App. Vitalgate authenticates with GitHub's OIDC tokens, so there's no secret to add.",
+				},
+			],
+			mapping: [
+				{
+					from: "categories:performance  minScore: 0.9",
+					to: "Performance score ≥ 90",
+				},
+				{
+					from: "largest-contentful-paint  maxNumericValue: 2500",
+					to: "LCP ≤ 2500 ms",
+				},
+				{
+					from: "cumulative-layout-shift  maxNumericValue: 0.1",
+					to: "CLS ≤ 0.1",
+				},
+				{
+					from: "first-contentful-paint  maxNumericValue: 1800",
+					to: "FCP ≤ 1800 ms",
+				},
+				{
+					from: "total-blocking-time  maxNumericValue: 300",
+					to: "TBT ≤ 300 ms",
+				},
+			],
+			note: "Assertions on other audits have no Vitalgate equivalent. Results stored on a Lighthouse CI server don't move over: the first pull request Vitalgate audits becomes the baseline.",
+		},
 	},
 	{
 		slug: "calibre",

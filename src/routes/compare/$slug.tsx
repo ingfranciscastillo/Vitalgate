@@ -134,6 +134,8 @@ function ComparePage() {
 					))}
 				</div>
 
+				{c.migration && <Migration name={c.name} migration={c.migration} />}
+
 				<section className="mt-14 grid gap-4 sm:grid-cols-2">
 					<FitCard title={`Choose ${c.name} for`} items={c.themBestFor} />
 					<FitCard title="Choose Vitalgate for" items={c.vitalgateBestFor} />
@@ -201,5 +203,73 @@ function OtherComparisons({ current }: { current: Competitor }) {
 				))}
 			</ul>
 		</nav>
+	);
+}
+
+function Migration({
+	name,
+	migration,
+}: {
+	name: string;
+	migration: NonNullable<Competitor["migration"]>;
+}) {
+	return (
+		<section className="mt-14">
+			<h2 className="text-xl font-bold tracking-tight">
+				Switching from {name}
+			</h2>
+			<p className="mt-3 max-w-2xl text-muted-foreground">{migration.intro}</p>
+			<ol className="mt-6 space-y-5">
+				{migration.steps.map((step, i) => (
+					<li key={step.title} className="flex gap-4">
+						<span className="grid size-7 shrink-0 place-items-center rounded-full border border-border font-mono text-xs">
+							{i + 1}
+						</span>
+						<div>
+							<h3 className="font-semibold">{step.title}</h3>
+							<p className="mt-1 max-w-2xl text-sm text-muted-foreground">
+								{step.body}
+							</p>
+						</div>
+					</li>
+				))}
+			</ol>
+			{migration.mapping && (
+				<Card className="mt-6 overflow-hidden p-0">
+					<div className="overflow-x-auto">
+						<table className="w-full text-sm">
+							<caption className="sr-only">
+								{name} assertions and their Vitalgate budgets
+							</caption>
+							<thead className="bg-muted/50 text-left">
+								<tr>
+									<th scope="col" className="px-5 py-3 font-semibold">
+										In lighthouserc
+									</th>
+									<th scope="col" className="px-5 py-3 font-semibold">
+										Vitalgate budget
+									</th>
+								</tr>
+							</thead>
+							<tbody className="divide-y divide-border">
+								{migration.mapping.map((m) => (
+									<tr key={m.from}>
+										<td className="whitespace-pre px-5 py-3 font-mono text-xs">
+											{m.from}
+										</td>
+										<td className="px-5 py-3">{m.to}</td>
+									</tr>
+								))}
+							</tbody>
+						</table>
+					</div>
+				</Card>
+			)}
+			{migration.note && (
+				<p className="mt-3 max-w-2xl text-xs text-muted-foreground">
+					{migration.note}
+				</p>
+			)}
+		</section>
 	);
 }
