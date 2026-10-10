@@ -24,6 +24,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+	deleteMyAccount,
+	getAccountDeletionPreview,
+} from "@/lib/account.functions";
 import { authClient } from "@/lib/auth-client";
 import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
@@ -837,6 +841,132 @@ function BillingCard() {
 	);
 }
 
+/**
+ * Self-service account deletion. Shows exactly what goes (workspaces where
+ * you're the only owner) and what you just leave, then asks for the
+ * account's email before deleting.
+ */
+function DeleteAccountCard() {
+	const [open, setOpen] = useState(false);
+	const [confirmEmail, setConfirmEmail] = useState("");
+	const { data: preview, isPending } = useQuery({
+		queryKey: ["account-deletion-preview"],
+		queryFn: () => getAccountDeletionPreview(),
+		enabled: open,
+	});
+	const remove = useMutation({
+		mutationFn: deleteMyAccount,
+		onSuccess: () => {
+			// The session went with the account; start over from the homepage.
+			window.location.href = "/";
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error ? err.message : "Could not delete your account",
+			),
+	});
+	const matches =
+		!!preview &&
+		confirmEmail.trim().toLowerCase() === preview.email.toLowerCase();
+
+	return (
+		<Card className="p-6 max-w-xl border-destructive/30">
+			<h2 className="font-semibold">Delete account</h2>
+			<p className="mt-1 text-xs text-muted-foreground">
+				Permanently deletes your Vitalgate account and signs you out everywhere.
+				This can't be undone.
+			</p>
+			{!open ? (
+				<Button
+					className="mt-4"
+					variant="destructive"
+					size="sm"
+					onClick={() => setOpen(true)}
+				>
+					Delete account…
+				</Button>
+			) : isPending || !preview ? (
+				<p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+			) : (
+				<form
+					className="mt-4 space-y-4"
+					onSubmit={(e) => {
+						e.preventDefault();
+						if (matches) remove.mutate({ data: { confirmEmail } });
+					}}
+				>
+					<ul className="list-disc space-y-1.5 pl-5 text-sm">
+						{preview.deletedWorkspaces.length > 0 && (
+							<li>
+								<span className="font-medium">
+									{preview.deletedWorkspaces.join(", ")}
+								</span>{" "}
+								{preview.deletedWorkspaces.length === 1 ? "is" : "are"} deleted,
+								since you're the only owner: repositories, budgets, pull request
+								history and alerts. Vitalgate's workflow file is removed from
+								those repositories.
+							</li>
+						)}
+						{preview.leftWorkspaces.length > 0 && (
+							<li>
+								You leave{" "}
+								<span className="font-medium">
+									{preview.leftWorkspaces.join(", ")}
+								</span>
+								;{" "}
+								{preview.leftWorkspaces.length === 1 ? "it stays" : "they stay"}{" "}
+								as they are for the other members.
+							</li>
+						)}
+						<li>
+							Any Pro subscription you pay for, or that belongs to a deleted
+							workspace, is canceled right away, without a refund for the rest
+							of the month.
+						</li>
+						<li>
+							To remove Vitalgate's access on GitHub too, uninstall the GitHub
+							App from your GitHub settings.
+						</li>
+					</ul>
+					<div className="space-y-1.5">
+						<Label htmlFor="confirm-email" className="text-sm">
+							Type <span className="font-mono">{preview.email}</span> to confirm
+						</Label>
+						<Input
+							id="confirm-email"
+							autoComplete="off"
+							value={confirmEmail}
+							onChange={(e) => setConfirmEmail(e.target.value)}
+						/>
+					</div>
+					<div className="flex gap-2">
+						<Button
+							type="submit"
+							variant="destructive"
+							size="sm"
+							disabled={!matches || remove.isPending}
+						>
+							{remove.isPending ? "Deleting…" : "Delete my account"}
+						</Button>
+						<Button
+							type="button"
+							variant="ghost"
+							size="sm"
+							disabled={remove.isPending}
+							onClick={() => {
+								setOpen(false);
+								setConfirmEmail("");
+							}}
+						>
+							Cancel
+						</Button>
+					</div>
+				</form>
+			)}
+		</Card>
+	);
+}
+
 function Settings() {
 	const { integration, tab } = Route.useSearch();
 	const initialTab = integration
@@ -882,6 +1012,9 @@ function Settings() {
 				<TabsContent value="security" className="mt-6 space-y-4">
 					<Reveal>
 						<SessionsCard />
+					</Reveal>
+					<Reveal delay={0.05}>
+						<DeleteAccountCard />
 					</Reveal>
 				</TabsContent>
 			</Tabs>

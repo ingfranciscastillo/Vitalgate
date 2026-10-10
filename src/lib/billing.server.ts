@@ -1,5 +1,7 @@
 import { checkout, polar, portal, webhooks } from "@polar-sh/better-auth";
-import { createPolarCore } from "@polar-sh/sdk/2026-10";
+import { createPolarCore, errors } from "@polar-sh/sdk/2026-10";
+import { deleteExternalCustomers } from "@polar-sh/sdk/2026-10/services/customers";
+import { revokeSubscriptions } from "@polar-sh/sdk/2026-10/services/subscriptions";
 import { and, eq } from "drizzle-orm";
 import { db } from "@/db";
 import { member, organization, orgSubscriptions } from "@/db/schema";
@@ -132,14 +134,57 @@ export async function applySubscriptionEvent(
 	]);
 }
 
-/** The Better Auth plugin, or nothing when Polar isn't configured (e.g. local dev without keys). */
-export function polarPlugins() {
-	if (!isBillingConfigured()) return [];
-	const client = createPolarCore({
+/** Polar API client for this server's environment. */
+export function polarCore() {
+	return createPolarCore({
 		accessToken: process.env.POLAR_ACCESS_TOKEN ?? "",
 		environment:
 			process.env.POLAR_ENVIRONMENT === "production" ? "production" : "sandbox",
 	});
+}
+
+/**
+ * Deletes the user's Polar customer, which cancels their subscriptions at
+ * once and anonymizes their billing details (past orders stay on record).
+ * A user who never checked out has no customer, which is fine.
+ */
+export async function deletePolarCustomer(userId: string): Promise<void> {
+	if (!isBillingConfigured()) return;
+	try {
+		await deleteExternalCustomers(polarCore())(userId, { anonymize: true });
+	} catch (err) {
+		if (err instanceof errors.ResourceNotFound) return;
+		throw err;
+	}
+}
+
+/**
+ * Ends a workspace's subscription now, whoever pays for it — for when the
+ * workspace itself is being deleted. Already-ended ones are fine.
+ */
+export async function revokeOrgSubscription(organizationId: string) {
+	if (!isBillingConfigured()) return;
+	const [sub] = await db
+		.select({
+			id: orgSubscriptions.polarSubscriptionId,
+			status: orgSubscriptions.status,
+		})
+		.from(orgSubscriptions)
+		.where(eq(orgSubscriptions.organizationId, organizationId))
+		.limit(1);
+	if (!sub || !PRO_STATUSES.has(sub.status)) return;
+	try {
+		await revokeSubscriptions(polarCore())(sub.id);
+	} catch (err) {
+		if (err instanceof errors.ResourceNotFound) return;
+		throw err;
+	}
+}
+
+/** The Better Auth plugin, or nothing when Polar isn't configured (e.g. local dev without keys). */
+export function polarPlugins() {
+	if (!isBillingConfigured()) return [];
+	const client = polarCore();
 	const billingTab = `${getAppUrl()}/settings?tab=billing`;
 	const onSubscription = async (payload: { data: PolarSubscriptionEvent }) =>
 		applySubscriptionEvent(payload.data);

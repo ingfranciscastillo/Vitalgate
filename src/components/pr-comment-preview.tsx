@@ -119,7 +119,7 @@ export function PrCommentPreview({ repo = "acme/storefront#1042" }) {
 					</span>
 				</p>
 				<div className="mt-3 overflow-x-auto">
-					<table className="w-full min-w-[440px] border-collapse text-xs">
+					<table className="w-full min-w-110 border-collapse text-xs">
 						<thead>
 							<tr className="text-left text-muted-foreground">
 								<th className="border border-border px-2.5 py-1.5 font-medium">

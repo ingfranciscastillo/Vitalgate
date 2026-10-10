@@ -238,10 +238,14 @@ function PrivacyPolicy() {
 								from your list.
 							</p>
 							<p>
-								There isn't a self-service "delete my account" button yet. Email{" "}
-								<ContactEmail /> and we'll delete your account and personal data
-								within 30 days. Contact form emails are kept only as long as
-								needed to answer you.
+								You can delete your account yourself from Settings → Security.
+								That deletes your personal data right away, along with any
+								workspace where you're the only owner; workspaces you share with
+								other owners stay with them. Payment records kept by Polar are
+								anonymized but retained for tax purposes. You can also email{" "}
+								<ContactEmail /> and we'll delete your account within 30 days.
+								Contact form emails are kept only as long as needed to answer
+								you.
 							</p>
 						</section>
 
@@ -280,10 +284,10 @@ function PrivacyPolicy() {
 							</p>
 							<p>
 								Email <ContactEmail /> to make a request. We'll answer within 30
-								days. You can also review and revoke your sessions yourself from
-								Settings → Security. If you're in the EU or UK and aren't happy
-								with our answer, you can complain to your local data protection
-								authority.
+								days. You can also review and revoke your sessions, and delete
+								your account, yourself from Settings → Security. If you're in
+								the EU or UK and aren't happy with our answer, you can complain
+								to your local data protection authority.
 							</p>
 						</section>
 
