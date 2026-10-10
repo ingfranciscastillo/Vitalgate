@@ -1,0 +1,1 @@
+ALTER TABLE "repos" ADD COLUMN "audit_mode" text DEFAULT 'build' NOT NULL;

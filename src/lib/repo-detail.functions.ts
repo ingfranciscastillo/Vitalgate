@@ -53,6 +53,7 @@ export interface RepoDetail {
 	lastRunAt: string | null;
 	envVarNames: string[];
 	postPrComments: boolean;
+	auditMode: "build" | "preview";
 	budgets: RepoDetailBudget[];
 	pulls: RepoDetailPull[];
 	series: RepoDetailSeriesPoint[];
@@ -75,6 +76,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 				defaultBranch: repos.defaultBranch,
 				envVarNames: repos.envVarNames,
 				postPrComments: repos.postPrComments,
+				auditMode: repos.auditMode,
 			})
 			.from(repos)
 			.where(
@@ -154,6 +156,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 			lastRunAt: agg?.lastRunAt ? new Date(agg.lastRunAt).toISOString() : null,
 			envVarNames: repo.envVarNames,
 			postPrComments: repo.postPrComments,
+			auditMode: repo.auditMode,
 			budgets: budgetRows,
 			pulls: pullRows,
 			alerts: alertRows.map((a) => ({

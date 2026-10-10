@@ -45,7 +45,7 @@ sequenceDiagram
     V-->>A: status
 ```
 
-Audits run on **your own** GitHub Actions runner: Vitalgate never builds or hosts your app. The workflow proves which repository and pull request it reports for with a short-lived token signed by GitHub (OIDC), so there is no secret to copy into each repository.
+Audits run on **your own** GitHub Actions runner: Vitalgate never builds or hosts your app. Each repository picks how in its Settings: **build** the app in the workflow and audit it on `localhost`, or audit the **preview deployment** a host such as Vercel, Netlify or Render reports to GitHub for the PR (no build, no secrets; Vitalgate finds the PR from the deployed commit). The workflow proves which repository and pull request it reports for with a short-lived token signed by GitHub (OIDC), so there is no secret to copy into each repository.
 
 > [!NOTE]
 > Lighthouse lab runs can't measure INP, which needs real user interactions. TBT is its lab stand-in, so budgets cover LCP, CLS, FCP, TBT and the performance score.

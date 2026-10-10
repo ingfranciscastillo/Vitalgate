@@ -21,6 +21,8 @@ export interface GithubOidcClaims {
 	event_name: string;
 	/** For pull_request runs: "refs/pull/<number>/merge". */
 	ref: string;
+	/** The commit the run is for (for deployment_status runs, the deployed commit). */
+	sha: string;
 }
 
 type JwksFetcher = () => Promise<{ keys: (JsonWebKey & { kid?: string })[] }>;
@@ -103,7 +105,8 @@ export async function verifyGithubOidcToken(
 			typeof claims.repository_id !== "string" ||
 			typeof claims.repository !== "string" ||
 			typeof claims.event_name !== "string" ||
-			typeof claims.ref !== "string"
+			typeof claims.ref !== "string" ||
+			typeof claims.sha !== "string"
 		) {
 			return null;
 		}
@@ -112,6 +115,7 @@ export async function verifyGithubOidcToken(
 			repository: claims.repository,
 			event_name: claims.event_name,
 			ref: claims.ref,
+			sha: claims.sha,
 		};
 	} catch {
 		return null;

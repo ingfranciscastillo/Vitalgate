@@ -58,6 +58,15 @@ export const repos = pgTable(
 		envVarNames: jsonb("env_var_names").notNull().$type<string[]>().default([]),
 		/** The GitHub App installation that grants access to this repo, used for every GitHub call about it. */
 		installationId: text("installation_id").notNull(),
+		/**
+		 * How pull requests are audited: "build" builds and starts the app in
+		 * GitHub Actions; "preview" audits the preview deployment a host like
+		 * Vercel or Netlify reports to GitHub for the PR.
+		 */
+		auditMode: text("audit_mode")
+			.notNull()
+			.default("build")
+			.$type<"build" | "preview">(),
 		/** Whether /api/ingest hands the workflow a results comment to post on the PR. */
 		postPrComments: boolean("post_pr_comments").notNull().default(true),
 		createdAt: timestamp("created_at").defaultNow().notNull(),

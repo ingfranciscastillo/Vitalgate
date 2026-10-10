@@ -127,6 +127,13 @@
       "when": 1791592683519,
       "tag": "0017_known_beast",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791596399919,
+      "tag": "0018_wonderful_shotgun",
+      "breakpoints": true
     }
   ]
 }

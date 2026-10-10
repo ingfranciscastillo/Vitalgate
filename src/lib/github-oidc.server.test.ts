@@ -32,6 +32,7 @@ const validClaims = () => ({
 	repository: "acme/web",
 	event_name: "pull_request",
 	ref: "refs/pull/10/merge",
+	sha: "84eaa8452bd4bcd6e1d7a6dd0a2f2d0ba25bb8f1",
 });
 
 describe("verifyGithubOidcToken", () => {
@@ -46,6 +47,7 @@ describe("verifyGithubOidcToken", () => {
 			repository: "acme/web",
 			event_name: "pull_request",
 			ref: "refs/pull/10/merge",
+			sha: "84eaa8452bd4bcd6e1d7a6dd0a2f2d0ba25bb8f1",
 		});
 	});
 

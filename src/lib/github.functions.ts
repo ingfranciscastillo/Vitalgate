@@ -28,7 +28,10 @@ import {
 	idSchema,
 	parseInput,
 } from "@/lib/validation";
-import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
+import {
+	vitalgatePreviewWorkflowYaml,
+	vitalgateWorkflowYaml,
+} from "@/lib/workflow-template";
 
 /**
  * Every repo the workspace's GitHub App installations can access, keyed by
@@ -144,6 +147,7 @@ interface RegenerateWorkflowRepo {
 	githubRepoId: string;
 	fullName: string;
 	defaultBranch: string;
+	auditMode: "build" | "preview";
 }
 
 /**
@@ -162,6 +166,16 @@ async function regenerateWorkflow(
 	vitalgateOrigin: string,
 	overrides: { startScript?: string; port?: number } = {},
 ): Promise<CommitWorkflowResult> {
+	// Preview mode audits the host's deployment: nothing to detect about how
+	// the repo builds or serves.
+	if (repo.auditMode === "preview") {
+		return commitWorkflowFile(
+			accessToken,
+			repo.fullName,
+			vitalgatePreviewWorkflowYaml({ vitalgateOrigin }),
+		);
+	}
+
 	const packageManager = await detectPackageManager(accessToken, repo.fullName);
 	const pkg = await getPackageJson(accessToken, repo.fullName);
 
@@ -304,6 +318,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					githubRepoId: repo.id,
 					fullName: repo.fullName,
 					defaultBranch: repo.defaultBranch,
+					auditMode: "build",
 				},
 				envVarNames,
 				vitalgateOrigin,
@@ -341,6 +356,7 @@ export const updateRepoEnvVars = createServerFn({ method: "POST" })
 				fullName: repos.fullName,
 				defaultBranch: repos.defaultBranch,
 				installationId: repos.installationId,
+				auditMode: repos.auditMode,
 			})
 			.from(repos)
 			.where(
@@ -378,12 +394,53 @@ export const regenerateRepoWorkflow = createServerFn({ method: "POST" })
 				defaultBranch: repos.defaultBranch,
 				installationId: repos.installationId,
 				envVarNames: repos.envVarNames,
+				auditMode: repos.auditMode,
 			})
 			.from(repos)
 			.where(
 				and(eq(repos.id, repoId), eq(repos.organizationId, organizationId)),
 			)
 			.limit(1);
+		if (!repo) throw new Error("Repository not found");
+
+		return regenerateWorkflow(
+			await getInstallationToken(repo.installationId),
+			repo,
+			repo.envVarNames,
+			getAppUrl(),
+		);
+	});
+
+/**
+ * Switches how a repo's pull requests are audited — building in GitHub
+ * Actions, or auditing the host's preview deployments — and recommits the
+ * workflow for that mode. The repo's Settings tab.
+ */
+export const setRepoAuditMode = createServerFn({ method: "POST" })
+	.validator(
+		parseInput(
+			z.object({ repoId: idSchema, auditMode: z.enum(["build", "preview"]) }),
+		),
+	)
+	.handler(async ({ data }) => {
+		const { organizationId } = await requireOrgAdmin();
+		const [repo] = await db
+			.update(repos)
+			.set({ auditMode: data.auditMode })
+			.where(
+				and(
+					eq(repos.id, data.repoId),
+					eq(repos.organizationId, organizationId),
+				),
+			)
+			.returning({
+				githubRepoId: repos.githubRepoId,
+				fullName: repos.fullName,
+				defaultBranch: repos.defaultBranch,
+				installationId: repos.installationId,
+				envVarNames: repos.envVarNames,
+				auditMode: repos.auditMode,
+			});
 		if (!repo) throw new Error("Repository not found");
 
 		return regenerateWorkflow(

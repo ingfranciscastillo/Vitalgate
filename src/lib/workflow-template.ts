@@ -75,14 +75,125 @@ function runScript(manager: PackageManager, script: string): string {
 	}
 }
 
+/** First line of every generated workflow: the marker, plus a note for whoever opens the file. */
+const HEADER = `${WORKFLOW_MANAGED_MARKER} Vitalgate regenerates this file from this repository's Settings — edits made directly here will be overwritten.`;
+
 /**
- * GitHub Action template committed to a repo when it's connected. Every
- * value below — package manager, its version, the serve script, the port,
- * and where to report results — is resolved once at connect time from the
- * repo's own files and the request that connected it, instead of guessed
- * defaults baked into the template. Re-running "detect" only happens by
- * disconnecting and reconnecting the repo on Vitalgate, which regenerates
- * this whole file (see WORKFLOW_MANAGED_MARKER).
+ * The "Report to Vitalgate" step, shared by both audit modes: reads
+ * ./lighthouse.json, asks GitHub for an OIDC token proving which repository
+ * (and PR or deployed commit) this run is for, sends the metrics, and posts
+ * the results comment itself only as a fallback (normally the GitHub App
+ * posts it). On pull_request runs the PR details come from the event; on
+ * deployment runs Vitalgate looks them up from the commit.
+ */
+function reportStep(vitalgateOrigin: string, mode: "build" | "preview") {
+	const prEnv =
+		mode === "build"
+			? `          PR_NUMBER: \${{ github.event.pull_request.number }}
+          PR_TITLE: \${{ github.event.pull_request.title }}
+          PR_AUTHOR: \${{ github.event.pull_request.user.login }}
+          PR_BRANCH: \${{ github.event.pull_request.head.ref }}
+          PR_HEAD_SHA: \${{ github.event.pull_request.head.sha }}
+`
+			: "";
+	return `      - name: Report to Vitalgate
+        env:
+${prEnv}          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+        run: |
+          node -e '
+          const fs = require("fs");
+          const report = JSON.parse(fs.readFileSync("./lighthouse.json", "utf8"));
+          const a = report.audits;
+          const metrics = {
+            LCP: a["largest-contentful-paint"].numericValue,
+            CLS: a["cumulative-layout-shift"].numericValue,
+            FCP: a["first-contentful-paint"].numericValue,
+            TBT: a["total-blocking-time"].numericValue,
+            PERF: Math.round(report.categories.performance.score * 100),
+          };
+          // Lighthouse (lab data) has no INP audit — INP is a field metric,
+          // not something a single synthetic run produces. Left out on purpose.
+
+          // Fallback only: posts the results on the PR, or updates the
+          // previous comment, when the Vitalgate GitHub App could not. Never
+          // fails the job: PRs from forks get a read-only token and can not
+          // be commented on.
+          async function upsertComment(markdown, prNumber) {
+            if (!markdown || !prNumber || !process.env.GITHUB_TOKEN) return;
+            const api = "https://api.github.com/repos/" + process.env.GITHUB_REPOSITORY + "/issues";
+            const headers = {
+              authorization: "Bearer " + process.env.GITHUB_TOKEN,
+              accept: "application/vnd.github+json",
+              "content-type": "application/json",
+              "x-github-api-version": "2022-11-28",
+            };
+            try {
+              const list = await fetch(api + "/" + prNumber + "/comments?per_page=100", { headers }).then((r) => r.json());
+              const previous = Array.isArray(list)
+                ? list.find((c) => c.user && c.user.login === "github-actions[bot]" && c.body && c.body.includes("${PR_COMMENT_MARKER}"))
+                : undefined;
+              const res = previous
+                ? await fetch(api + "/comments/" + previous.id, { method: "PATCH", headers, body: JSON.stringify({ body: markdown }) })
+                : await fetch(api + "/" + prNumber + "/comments", { method: "POST", headers, body: JSON.stringify({ body: markdown }) });
+              if (!res.ok) console.log("Vitalgate: could not comment on the PR (HTTP " + res.status + ").");
+            } catch (err) {
+              console.log("Vitalgate: could not comment on the PR: " + err.message);
+            }
+          }
+
+          (async () => {
+            // GitHub withholds OIDC tokens from pull requests opened from
+            // forks, so those runs can not report; skip instead of failing.
+            if (!process.env.ACTIONS_ID_TOKEN_REQUEST_URL) {
+              console.log("Vitalgate: pull requests from forks can not report results, skipping.");
+              return;
+            }
+            const oidc = await fetch(
+              process.env.ACTIONS_ID_TOKEN_REQUEST_URL + "&audience=" + encodeURIComponent("${vitalgateOrigin}"),
+              { headers: { authorization: "Bearer " + process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN } },
+            ).then((r) => r.json());
+
+            const res = await fetch("${vitalgateOrigin}/api/ingest", {
+              method: "POST",
+              headers: {
+                "content-type": "application/json",
+                authorization: "Bearer " + oidc.value,
+              },
+              body: JSON.stringify({
+                prTitle: process.env.PR_TITLE,
+                prAuthor: process.env.PR_AUTHOR,
+                branch: process.env.PR_BRANCH,
+                headSha: process.env.PR_HEAD_SHA,
+                metrics,
+              }),
+            });
+            const body = await res.json();
+            if (!res.ok) {
+              console.error(JSON.stringify(body, null, 2));
+              process.exit(1);
+            }
+            if (body.status === "skipped") {
+              console.log("Vitalgate: " + body.reason);
+              return;
+            }
+            console.log(JSON.stringify({ status: body.status, violations: body.violations }, null, 2));
+            await upsertComment(body.comment, process.env.PR_NUMBER || body.prNumber);
+            if (body.status === "failing") {
+              console.error("Vitalgate: a required performance budget was violated.");
+              // The "Vitalgate" check already reports the failure; only fail
+              // this job when that check could not be created.
+              if (!body.checkRun) process.exit(1);
+            }
+          })();
+          '
+`;
+}
+
+/**
+ * Workflow for the "build" audit mode: on each pull request, builds the app
+ * in GitHub Actions, starts it, and audits it on localhost. Package manager,
+ * serve script, port and forwarded secrets are resolved from the repo's own
+ * files and its Vitalgate settings when the workflow is (re)generated.
  */
 export function vitalgateWorkflowYaml(opts: {
 	defaultBranch: string;
@@ -123,7 +234,7 @@ export function vitalgateWorkflowYaml(opts: {
 	const forwardedEnv = opts.envVarNames
 		.map((name) => `          ${name}: \${{ secrets.${name} }}\n`)
 		.join("");
-	return `${WORKFLOW_MANAGED_MARKER} Reconnecting this repository on Vitalgate regenerates this file — edits made directly here will be overwritten.
+	return `${HEADER}
 name: Vitalgate Performance Budgets
 
 on:
@@ -136,14 +247,12 @@ env:
 jobs:
   lighthouse:
     runs-on: ubuntu-latest
-    # Only what the job needs: read the code, and comment the results on the
-    # pull request with the workflow's own GITHUB_TOKEN.
+    # Only what the job needs: read the code, comment results on the pull
+    # request as a fallback, and ask GitHub for a signed OIDC token that
+    # proves to Vitalgate which repository and pull request this is.
     permissions:
       contents: read
       pull-requests: write
-      # Lets the run ask GitHub for a signed OIDC token that proves to
-      # Vitalgate which repository and pull request the results are for —
-      # no Vitalgate secret to store in the repo.
       id-token: write
     # Bounds the whole job so a hung dev server (or anything else) fails loudly
     # instead of running until someone notices and cancels it by hand.
@@ -170,98 +279,7 @@ ${forwardedEnv}        run: |
         timeout-minutes: 5
         run: npx --yes lighthouse "http://localhost:\${{ env.VITALGATE_PORT }}" --output=json --output-path=./lighthouse.json --chrome-flags="--headless --no-sandbox" --max-wait-for-load=45000
 
-      - name: Report to Vitalgate
-        env:
-          PR_NUMBER: \${{ github.event.pull_request.number }}
-          PR_TITLE: \${{ github.event.pull_request.title }}
-          PR_AUTHOR: \${{ github.event.pull_request.user.login }}
-          PR_BRANCH: \${{ github.event.pull_request.head.ref }}
-          PR_HEAD_SHA: \${{ github.event.pull_request.head.sha }}
-          GITHUB_TOKEN: \${{ secrets.GITHUB_TOKEN }}
-        run: |
-          node -e '
-          const fs = require("fs");
-          const report = JSON.parse(fs.readFileSync("./lighthouse.json", "utf8"));
-          const a = report.audits;
-          const metrics = {
-            LCP: a["largest-contentful-paint"].numericValue,
-            CLS: a["cumulative-layout-shift"].numericValue,
-            FCP: a["first-contentful-paint"].numericValue,
-            TBT: a["total-blocking-time"].numericValue,
-            PERF: Math.round(report.categories.performance.score * 100),
-          };
-          // Lighthouse (lab data) has no INP audit — INP is a field metric,
-          // not something a single synthetic run produces. Left out on purpose.
-
-          // Posts the results on the PR, or updates the previous Vitalgate
-          // comment so a PR has one comment instead of one per push. Never
-          // fails the job: PRs from forks get a read-only token and can not
-          // be commented on.
-          async function upsertComment(markdown) {
-            if (!markdown || !process.env.GITHUB_TOKEN) return;
-            const api = "https://api.github.com/repos/" + process.env.GITHUB_REPOSITORY + "/issues";
-            const headers = {
-              authorization: "Bearer " + process.env.GITHUB_TOKEN,
-              accept: "application/vnd.github+json",
-              "content-type": "application/json",
-              "x-github-api-version": "2022-11-28",
-            };
-            try {
-              const list = await fetch(api + "/" + process.env.PR_NUMBER + "/comments?per_page=100", { headers }).then((r) => r.json());
-              const previous = Array.isArray(list)
-                ? list.find((c) => c.user && c.user.login === "github-actions[bot]" && c.body && c.body.includes("${PR_COMMENT_MARKER}"))
-                : undefined;
-              const res = previous
-                ? await fetch(api + "/comments/" + previous.id, { method: "PATCH", headers, body: JSON.stringify({ body: markdown }) })
-                : await fetch(api + "/" + process.env.PR_NUMBER + "/comments", { method: "POST", headers, body: JSON.stringify({ body: markdown }) });
-              if (!res.ok) console.log("Vitalgate: could not comment on the PR (HTTP " + res.status + ").");
-            } catch (err) {
-              console.log("Vitalgate: could not comment on the PR: " + err.message);
-            }
-          }
-
-          (async () => {
-            // GitHub withholds OIDC tokens from pull requests opened from
-            // forks, so those runs can not report; skip instead of failing.
-            if (!process.env.ACTIONS_ID_TOKEN_REQUEST_URL) {
-              console.log("Vitalgate: pull requests from forks can not report results, skipping.");
-              return;
-            }
-            const oidc = await fetch(
-              process.env.ACTIONS_ID_TOKEN_REQUEST_URL + "&audience=" + encodeURIComponent("${opts.vitalgateOrigin}"),
-              { headers: { authorization: "Bearer " + process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN } },
-            ).then((r) => r.json());
-
-            const res = await fetch("${opts.vitalgateOrigin}/api/ingest", {
-              method: "POST",
-              headers: {
-                "content-type": "application/json",
-                authorization: "Bearer " + oidc.value,
-              },
-              body: JSON.stringify({
-                prTitle: process.env.PR_TITLE,
-                prAuthor: process.env.PR_AUTHOR,
-                branch: process.env.PR_BRANCH,
-                headSha: process.env.PR_HEAD_SHA,
-                metrics,
-              }),
-            });
-            const body = await res.json();
-            if (!res.ok) {
-              console.error(JSON.stringify(body, null, 2));
-              process.exit(1);
-            }
-            console.log(JSON.stringify({ status: body.status, violations: body.violations }, null, 2));
-            await upsertComment(body.comment);
-            if (body.status === "failing") {
-              console.error("Vitalgate: a required performance budget was violated.");
-              // The "Vitalgate" check already reports the failure; only fail
-              // this job when that check could not be created.
-              if (!body.checkRun) process.exit(1);
-            }
-          })();
-          '
-
+${reportStep(opts.vitalgateOrigin, "build")}
 # Package manager (${opts.packageManager}${opts.packageManager === "pnpm" ? ` ${opts.pnpmVersion}` : ""}), serve script ("${opts.startScript}")
 # and port (${opts.port}) were detected from this repo's files. To change them,
 # or the secrets forwarded to the server, use this repository's Settings on
@@ -273,4 +291,55 @@ ${forwardedEnv}        run: |
 			: ""
 	}
 `;
+}
+
+/**
+ * Workflow for the "preview" audit mode: no build here — it runs when the
+ * repo's host (Vercel, Netlify, Render…) reports a successful preview
+ * deployment to GitHub, and audits that URL. Vitalgate then finds the open
+ * pull request whose head is the deployed commit.
+ */
+export function vitalgatePreviewWorkflowYaml(opts: {
+	vitalgateOrigin: string;
+}): string {
+	return `${HEADER}
+name: Vitalgate Performance Budgets
+
+# Audits the preview deployment your host reports to GitHub for each pull
+# request, instead of building the app here.
+on:
+  deployment_status:
+
+jobs:
+  lighthouse:
+    # Successful, non-production deployments only.
+    if: >-
+      github.event.deployment_status.state == 'success' &&
+      github.event.deployment.production_environment != true &&
+      github.event.deployment.environment != 'Production' &&
+      github.event.deployment.environment != 'production'
+    runs-on: ubuntu-latest
+    # Comment results on the pull request as a fallback, and ask GitHub for
+    # a signed OIDC token that proves to Vitalgate which repository and
+    # commit this is. No checkout: nothing is built here.
+    permissions:
+      pull-requests: write
+      id-token: write
+    timeout-minutes: 10
+    steps:
+      - name: Run Lighthouse on the preview
+        timeout-minutes: 5
+        env:
+          PREVIEW_URL: \${{ github.event.deployment_status.environment_url || github.event.deployment_status.target_url }}
+          # Optional: Vercel's "Protection Bypass for Automation" secret, for
+          # previews behind Vercel Authentication.
+          VERCEL_BYPASS: \${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
+        run: |
+          EXTRA_HEADERS=()
+          if [ -n "$VERCEL_BYPASS" ]; then
+            EXTRA_HEADERS=(--extra-headers "{\\"x-vercel-protection-bypass\\":\\"$VERCEL_BYPASS\\"}")
+          fi
+          npx --yes lighthouse "$PREVIEW_URL" --output=json --output-path=./lighthouse.json --chrome-flags="--headless --no-sandbox" --max-wait-for-load=45000 "\${EXTRA_HEADERS[@]}"
+
+${reportStep(opts.vitalgateOrigin, "preview")}`;
 }

@@ -2,7 +2,10 @@ import { Script } from "node:vm";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { getAppUrl } from "@/lib/app-url.server";
 import { decryptSecret, encryptSecret } from "@/lib/crypto.server";
-import { vitalgateWorkflowYaml } from "@/lib/workflow-template";
+import {
+	vitalgatePreviewWorkflowYaml,
+	vitalgateWorkflowYaml,
+} from "@/lib/workflow-template";
 
 describe("encryptSecret / decryptSecret", () => {
 	it("round-trips and uses a fresh IV each time", () => {
@@ -75,5 +78,36 @@ describe("vitalgateWorkflowYaml", () => {
 		expect(yaml).toContain("DATABASE_URL: ${{ secrets.DATABASE_URL }}");
 		expect(script).toContain('"https://vitalgate.example/api/ingest"');
 		expect(yaml.startsWith("# Managed by Vitalgate.")).toBe(true);
+	});
+});
+
+describe("vitalgatePreviewWorkflowYaml", () => {
+	const yaml = vitalgatePreviewWorkflowYaml({
+		vitalgateOrigin: "https://vitalgate.example",
+	});
+	const script = yaml.split("node -e '\n")[1].split("\n          '\n")[0];
+
+	it("runs on successful non-production deployments, without building", () => {
+		expect(yaml).toContain("deployment_status:");
+		expect(yaml).toContain("github.event.deployment_status.state == 'success'");
+		expect(yaml).toContain(
+			"github.event.deployment.production_environment != true",
+		);
+		expect(yaml).not.toContain("actions/checkout");
+		expect(yaml).not.toContain("pull_request:");
+	});
+
+	it("audits the deployment URL, with Vercel's bypass header when set", () => {
+		expect(yaml).toContain('npx --yes lighthouse "$PREVIEW_URL"');
+		expect(yaml).toContain(
+			'EXTRA_HEADERS=(--extra-headers "{\\"x-vercel-protection-bypass\\":\\"$VERCEL_BYPASS\\"}")',
+		);
+	});
+
+	it("reports with a valid script and leaves PR details to Vitalgate", () => {
+		expect(() => new Script(script)).not.toThrow();
+		expect(script).not.toContain("'");
+		expect(yaml).toContain("id-token: write");
+		expect(yaml).not.toContain("PR_TITLE:");
 	});
 });

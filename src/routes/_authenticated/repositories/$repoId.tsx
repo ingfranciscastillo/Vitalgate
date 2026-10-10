@@ -38,6 +38,7 @@ import { formatDelivery, timeAgo } from "@/lib/format";
 import {
 	disconnectRepository,
 	regenerateRepoWorkflow,
+	setRepoAuditMode,
 	updateRepoEnvVars,
 } from "@/lib/github.functions";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
@@ -50,6 +51,19 @@ const levelIcon = {
 	warning: WarningIcon,
 	info: InfoIcon,
 } as const;
+
+const AUDIT_MODES = [
+	{
+		id: "build",
+		label: "Build in GitHub Actions",
+		desc: "Builds and starts the app in the workflow, then audits it on localhost.",
+	},
+	{
+		id: "preview",
+		label: "Preview deployments",
+		desc: "Audits the preview your host (Vercel, Netlify, Render…) deploys for each pull request. Faster, and no secrets needed.",
+	},
+] as const;
 
 export const Route = createFileRoute("/_authenticated/repositories/$repoId")({
 	// loader must come before head — see pulls/$prId.tsx for why.
@@ -98,6 +112,30 @@ function RepoDetail() {
 			}
 		},
 		onError: () => toast.error("Could not update environment variables"),
+	});
+
+	const setAuditMode = useMutation({
+		mutationFn: setRepoAuditMode,
+		onSuccess: (result, { data }) => {
+			queryClient.invalidateQueries({ queryKey: ["repos", repoId] });
+			if (result.status === "error" || result.status === "already-exists") {
+				toast.error(
+					result.status === "error"
+						? `Saved, but couldn't update the workflow: ${result.message}`
+						: "Saved, but a workflow Vitalgate didn't generate is in the way.",
+				);
+			} else {
+				toast.success(
+					data.auditMode === "preview"
+						? "Now auditing preview deployments"
+						: "Now building in GitHub Actions",
+				);
+			}
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error ? err.message : "Could not change the mode",
+			),
 	});
 
 	const regenerate = useMutation({
@@ -465,6 +503,57 @@ function RepoDetail() {
 					) : (
 						<>
 							<Card className="p-5">
+								<h2 className="font-semibold text-sm">
+									How pull requests are audited
+								</h2>
+								<div
+									role="radiogroup"
+									aria-label="Audit mode"
+									className="mt-4 grid gap-2 sm:grid-cols-2"
+								>
+									{AUDIT_MODES.map((mode) => (
+										<label
+											key={mode.id}
+											className={`flex cursor-pointer items-start gap-3 rounded-md border p-3 transition-colors ${
+												repo.auditMode === mode.id
+													? "border-primary bg-primary/5"
+													: "border-border hover:bg-muted/30"
+											} ${setAuditMode.isPending ? "pointer-events-none opacity-60" : ""}`}
+										>
+											<input
+												type="radio"
+												name="audit-mode"
+												className="mt-1 accent-(--color-primary)"
+												checked={repo.auditMode === mode.id}
+												disabled={setAuditMode.isPending}
+												onChange={() =>
+													setAuditMode.mutate({
+														data: { repoId, auditMode: mode.id },
+													})
+												}
+											/>
+											<div>
+												<div className="text-sm font-medium">{mode.label}</div>
+												<p className="mt-0.5 text-xs text-muted-foreground">
+													{mode.desc}
+												</p>
+											</div>
+										</label>
+									))}
+								</div>
+								{repo.auditMode === "preview" && (
+									<p className="mt-3 text-xs text-muted-foreground">
+										If your Vercel previews are protected, add the project's
+										Protection Bypass for Automation secret to this repository
+										as{" "}
+										<code className="font-mono">
+											VERCEL_AUTOMATION_BYPASS_SECRET
+										</code>
+										.
+									</p>
+								)}
+							</Card>
+							<Card className="p-5">
 								<div className="flex items-start justify-between gap-4">
 									<div>
 										<h2 className="font-semibold text-sm">
@@ -514,6 +603,12 @@ function RepoDetail() {
 							</Card>
 							<Card className="p-5">
 								<h2 className="font-semibold text-sm">Environment variables</h2>
+								{repo.auditMode === "preview" && (
+									<p className="mt-1 text-xs font-medium text-foreground">
+										Not used while auditing preview deployments — your host
+										already runs the app with its own variables.
+									</p>
+								)}
 								<p className="mt-1 text-xs text-muted-foreground">
 									Comma-separated names of repo secrets the started server needs
 									to boot — not their values. Each becomes a{" "}

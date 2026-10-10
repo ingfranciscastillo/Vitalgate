@@ -18,6 +18,10 @@ import {
 	verifyGithubOidcToken,
 } from "@/lib/github-oidc.server";
 import { upsertPrCommentAsApp } from "@/lib/github-pr-comment.server";
+import {
+	findOpenPullForCommit,
+	type PullForCommit,
+} from "@/lib/github-pull-for-commit.server";
 import type {
 	AlertRuleKey,
 	MetricKey,
@@ -40,10 +44,13 @@ const metricsSchema = z
 // Which repo and PR a run is for come from its GitHub-signed OIDC token, not
 // from here. These strings are bounded to GitHub's own limits: they end up
 // in alert emails and Slack/Discord posts.
+// Title, author, branch and head commit come from the workflow for
+// pull_request runs; preview-deployment runs leave them out and they're read
+// from GitHub instead.
 const ingestBodySchema = z.object({
-	prTitle: z.string().min(1).max(256),
-	prAuthor: z.string().min(1).max(39),
-	branch: z.string().min(1).max(255),
+	prTitle: z.string().min(1).max(256).optional(),
+	prAuthor: z.string().min(1).max(39).optional(),
+	branch: z.string().min(1).max(255).optional(),
 	metrics: metricsSchema,
 	/** The pull request's head commit, which the "Vitalgate" check is attached to. */
 	headSha: z
@@ -140,14 +147,18 @@ async function handleIngest(request: Request) {
 
 	// The workflow authenticates with an OIDC token GitHub issued for this
 	// run, meant for this Vitalgate (audience = our origin). It names the
-	// repository and pull request; nothing else in the request is trusted
-	// for that.
+	// repository, and the pull request (or deployed commit); nothing else in
+	// the request is trusted for that.
 	const claims = await verifyGithubOidcToken(token, getAppUrl());
 	if (!claims) return json({ error: "Invalid token" }, 401);
-	const prNumber =
-		claims.event_name === "pull_request" ? pullNumberFromRef(claims.ref) : null;
-	if (!prNumber) {
-		return json({ error: "Only pull_request runs can report results" }, 400);
+	if (
+		claims.event_name !== "pull_request" &&
+		claims.event_name !== "deployment_status"
+	) {
+		return json(
+			{ error: "Only pull_request and deployment_status runs can report" },
+			400,
+		);
 	}
 
 	let bodyJson: unknown;
@@ -181,6 +192,39 @@ async function handleIngest(request: Request) {
 		);
 	}
 	const { organizationId } = repo;
+
+	// Which pull request this run is for.
+	let pr: PullForCommit;
+	if (claims.event_name === "pull_request") {
+		const number = pullNumberFromRef(claims.ref);
+		if (!number || !body.prTitle || !body.prAuthor || !body.branch) {
+			return json({ error: "Missing pull request details" }, 400);
+		}
+		pr = {
+			number,
+			title: body.prTitle,
+			author: body.prAuthor,
+			branch: body.branch,
+			headSha: body.headSha ?? claims.sha,
+		};
+	} else {
+		// A preview deployment only knows the deployed commit: find the open
+		// PR it's the head of, through the GitHub App.
+		const found = await findOpenPullForCommit({
+			installationId: repo.installationId,
+			repoFullName: repo.fullName,
+			sha: claims.sha,
+		});
+		if (!found) {
+			return json({
+				status: "skipped",
+				reason:
+					"This deployment's commit isn't the head of an open pull request.",
+			});
+		}
+		pr = found;
+	}
+	const prNumber = pr.number;
 
 	const budgetRows = await db
 		.select({
@@ -250,9 +294,9 @@ async function handleIngest(request: Request) {
 		.values({
 			repoId: repo.id,
 			number: prNumber,
-			title: body.prTitle,
-			author: body.prAuthor,
-			branch: body.branch,
+			title: pr.title,
+			author: pr.author,
+			branch: pr.branch,
 			status,
 			openedAt: new Date(),
 			metrics: body.metrics,
@@ -263,9 +307,9 @@ async function handleIngest(request: Request) {
 			// baseline/openedAt intentionally not touched — a re-run (new commit
 			// pushed to the same PR) keeps comparing against the original baseline.
 			set: {
-				title: body.prTitle,
-				author: body.prAuthor,
-				branch: body.branch,
+				title: pr.title,
+				author: pr.author,
+				branch: pr.branch,
 				status,
 				metrics: body.metrics,
 			},
@@ -339,8 +383,8 @@ async function handleIngest(request: Request) {
 			organizationId,
 			repoFullName: repo.fullName,
 			prNumber: prNumber,
-			prTitle: body.prTitle,
-			prAuthor: body.prAuthor,
+			prTitle: pr.title,
+			prAuthor: pr.author,
 			pullId: pull.id,
 		});
 		if (deliveredTo.length > 0) {
@@ -373,16 +417,14 @@ async function handleIngest(request: Request) {
 	// The "Vitalgate" check carries pass/fail. When it's in place the
 	// workflow job doesn't fail on budgets (see workflow-template.ts), so a
 	// red job only ever means the audit itself broke.
-	const checkRun =
-		body.headSha !== undefined &&
-		(await createCheckRun({
-			installationId: repo.installationId,
-			repoFullName: repo.fullName,
-			headSha: body.headSha,
-			status,
-			summary: results,
-			detailsUrl: reportUrl,
-		}));
+	const checkRun = await createCheckRun({
+		installationId: repo.installationId,
+		repoFullName: repo.fullName,
+		headSha: pr.headSha,
+		status,
+		summary: results,
+		detailsUrl: reportUrl,
+	});
 
 	// With the GitHub App, Vitalgate posts the comment itself (as the app,
 	// and on fork PRs too) and the workflow gets nothing to post. Without it,
@@ -401,6 +443,8 @@ async function handleIngest(request: Request) {
 		violations,
 		comment: postedByApp ? null : comment,
 		checkRun,
+		// Lets the workflow's fallback comment find the PR on preview runs.
+		prNumber,
 	});
 }
 
