@@ -63,10 +63,9 @@ export const repos = pgTable(
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [
-		uniqueIndex("repos_organization_id_github_repo_id_unique").on(
-			t.organizationId,
-			t.githubRepoId,
-		),
+		// One workspace per GitHub repository: /api/ingest finds the repo
+		// (and so the workspace) from the run's OIDC token alone.
+		uniqueIndex("repos_github_repo_id_unique").on(t.githubRepoId),
 	],
 );
 
@@ -116,23 +115,6 @@ export const pullRequests = pgTable(
 		uniqueIndex("pull_requests_repo_id_number_unique").on(t.repoId, t.number),
 	],
 );
-
-/**
- * A CI token that authenticates a GitHub Action's ingest requests for one
- * organization. Only the SHA-256 hash is stored — the raw token is shown once
- * at creation (createOrgToken) and never again, same as a GitHub PAT.
- */
-export const orgTokens = pgTable("org_tokens", {
-	id: id(),
-	organizationId: text("organization_id")
-		.notNull()
-		.references(() => organization.id, { onDelete: "cascade" }),
-	tokenHash: text("token_hash").notNull().unique(),
-	/** Last 4 chars of the raw token, so a user can tell tokens apart in a list without re-seeing the value. */
-	lastFour: text("last_four").notNull(),
-	createdAt: timestamp("created_at").defaultNow().notNull(),
-	lastUsedAt: timestamp("last_used_at"),
-});
 
 export const alerts = pgTable("alerts", {
 	id: id(),
@@ -205,13 +187,6 @@ export const reposRelations = relations(repos, ({ many, one }) => ({
 	budgets: many(budgets),
 	pullRequests: many(pullRequests),
 	alerts: many(alerts),
-}));
-
-export const orgTokensRelations = relations(orgTokens, ({ one }) => ({
-	organization: one(organization, {
-		fields: [orgTokens.organizationId],
-		references: [organization.id],
-	}),
 }));
 
 export const budgetsRelations = relations(budgets, ({ one }) => ({
@@ -338,8 +313,6 @@ export type NewPullRequest = typeof pullRequests.$inferInsert;
 export type PullRequestRow = typeof pullRequests.$inferSelect;
 export type NewAlert = typeof alerts.$inferInsert;
 export type AlertRow = typeof alerts.$inferSelect;
-export type NewOrgToken = typeof orgTokens.$inferInsert;
-export type OrgTokenRow = typeof orgTokens.$inferSelect;
 export type NewAlertRule = typeof alertRules.$inferInsert;
 export type AlertRuleRow = typeof alertRules.$inferSelect;
 export type NewNotificationPref = typeof notificationPrefs.$inferInsert;

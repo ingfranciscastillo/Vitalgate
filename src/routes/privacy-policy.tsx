@@ -107,12 +107,6 @@ function PrivacyPolicy() {
 								generated from them.
 							</p>
 							<p>
-								<strong>CI tokens.</strong> We store a one-way hash of each
-								workspace token (plus its last four characters, so you can tell
-								them apart) and when it was last used. We can't recover the
-								token itself.
-							</p>
-							<p>
 								<strong>Integration data.</strong> If you connect Slack or
 								Discord, we store the incoming-webhook URL for the channel you
 								choose, encrypted, plus a label with the team and channel name.
@@ -148,7 +142,7 @@ function PrivacyPolicy() {
 								your repository. Your application is never built, started, or
 								run on our infrastructure. Only the resulting metrics and the
 								pull request details listed above are sent to us, authenticated
-								with your workspace's CI token.
+								with a short-lived token GitHub signs for that repository.
 							</p>
 						</section>
 
@@ -234,9 +228,9 @@ function PrivacyPolicy() {
 							<p>
 								We keep your data while your account and workspace are active.
 								Disconnecting a repository immediately deletes its budgets, pull
-								request history, and alerts. Revoking a CI token or
-								disconnecting an integration deletes it immediately. Revoked or
-								expired sessions are removed from your list.
+								request history, and alerts. Disconnecting an integration
+								deletes it immediately. Revoked or expired sessions are removed
+								from your list.
 							</p>
 							<p>
 								There isn't a self-service "delete my account" button yet. Email{" "}
@@ -250,8 +244,8 @@ function PrivacyPolicy() {
 							<h2>8. Security</h2>
 							<p>
 								Traffic to the site is encrypted with HTTPS. Slack and Discord
-								webhook URLs are encrypted at rest with AES-256-GCM. CI tokens
-								and passwords are stored only as hashes. Every request for
+								webhook URLs and GitHub sign-in tokens are encrypted at rest.
+								Passwords, if set, are stored only as hashes. Every request for
 								workspace data is checked against your active workspace, so one
 								workspace can't read another's data. No system is perfectly
 								secure; if a breach affects your personal data, we'll tell you

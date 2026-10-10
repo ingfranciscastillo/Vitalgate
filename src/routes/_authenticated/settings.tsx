@@ -12,7 +12,6 @@ import type { ComponentType } from "react";
 import { useEffect, useState } from "react";
 import toast from "react-hot-toast";
 import { AppShell } from "@/components/app-shell";
-import { CiTokenCard } from "@/components/ci-token-card";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -810,9 +809,6 @@ function Settings() {
 				<TabsContent value="org" className="mt-6 space-y-4">
 					<Reveal>
 						<OrganizationCard />
-					</Reveal>
-					<Reveal delay={0.05}>
-						<CiTokenCard />
 					</Reveal>
 				</TabsContent>
 

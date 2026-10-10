@@ -86,7 +86,6 @@ function runScript(manager: PackageManager, script: string): string {
  */
 export function vitalgateWorkflowYaml(opts: {
 	defaultBranch: string;
-	githubRepoId: string;
 	packageManager: PackageManager;
 	/**
 	 * Exact pnpm version to install (ignored for yarn/npm). Pass the version
@@ -142,6 +141,10 @@ jobs:
     permissions:
       contents: read
       pull-requests: write
+      # Lets the run ask GitHub for a signed OIDC token that proves to
+      # Vitalgate which repository and pull request the results are for —
+      # no Vitalgate secret to store in the repo.
+      id-token: write
     # Bounds the whole job so a hung dev server (or anything else) fails loudly
     # instead of running until someone notices and cancels it by hand.
     timeout-minutes: 20
@@ -169,7 +172,6 @@ ${forwardedEnv}        run: |
 
       - name: Report to Vitalgate
         env:
-          VITALGATE_TOKEN: \${{ secrets.VITALGATE_TOKEN }}
           PR_NUMBER: \${{ github.event.pull_request.number }}
           PR_TITLE: \${{ github.event.pull_request.title }}
           PR_AUTHOR: \${{ github.event.pull_request.user.login }}
@@ -218,15 +220,24 @@ ${forwardedEnv}        run: |
           }
 
           (async () => {
+            // GitHub withholds OIDC tokens from pull requests opened from
+            // forks, so those runs can not report; skip instead of failing.
+            if (!process.env.ACTIONS_ID_TOKEN_REQUEST_URL) {
+              console.log("Vitalgate: pull requests from forks can not report results, skipping.");
+              return;
+            }
+            const oidc = await fetch(
+              process.env.ACTIONS_ID_TOKEN_REQUEST_URL + "&audience=" + encodeURIComponent("${opts.vitalgateOrigin}"),
+              { headers: { authorization: "Bearer " + process.env.ACTIONS_ID_TOKEN_REQUEST_TOKEN } },
+            ).then((r) => r.json());
+
             const res = await fetch("${opts.vitalgateOrigin}/api/ingest", {
               method: "POST",
               headers: {
                 "content-type": "application/json",
-                authorization: "Bearer " + process.env.VITALGATE_TOKEN,
+                authorization: "Bearer " + oidc.value,
               },
               body: JSON.stringify({
-                githubRepoId: "${opts.githubRepoId}",
-                prNumber: Number(process.env.PR_NUMBER),
                 prTitle: process.env.PR_TITLE,
                 prAuthor: process.env.PR_AUTHOR,
                 branch: process.env.PR_BRANCH,
@@ -247,21 +258,14 @@ ${forwardedEnv}        run: |
           })();
           '
 
-# Setup checklist:
-# 1. Add a repo secret named VITALGATE_TOKEN (Settings > Secrets and
-#    variables > Actions) with the token from Vitalgate's Settings page.
-# 2. Package manager (${opts.packageManager}${opts.packageManager === "pnpm" ? ` ${opts.pnpmVersion}` : ""}),
-#    serve script ("${opts.startScript}"), and port (${opts.port}) were detected
-#    from this repo at connect time. Wrong? Disconnect and reconnect the repo
-#    on Vitalgate (or type an override when connecting) to regenerate this
-#    file — don't edit the values above by hand, they'll be overwritten on
-#    the next reconnect.${
+# Package manager (${opts.packageManager}${opts.packageManager === "pnpm" ? ` ${opts.pnpmVersion}` : ""}), serve script ("${opts.startScript}")
+# and port (${opts.port}) were detected from this repo's files. To change them,
+# or the secrets forwarded to the server, use this repository's Settings on
+# Vitalgate and regenerate the workflow — edits made here are overwritten.${
 		opts.envVarNames.length > 0
 			? `
-# 3. Forwards these repo secrets to the started server: ${opts.envVarNames.join(", ")}.
-#    Add/remove which ones by editing "Environment variables" when
-#    reconnecting this repo on Vitalgate — the values themselves stay in
-#    this repo's own secrets, Vitalgate only stores the names.`
+# Forwards these repo secrets to the started server: ${opts.envVarNames.join(", ")}.
+# Vitalgate only stores their names; the values stay in this repo's secrets.`
 			: ""
 	}
 `;

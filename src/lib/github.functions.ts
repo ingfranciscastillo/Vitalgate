@@ -126,22 +126,14 @@ const ENV_VAR_NAME_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
  * Cleans up user-typed env var names: trims, drops anything that isn't a
  * valid identifier (silently — this only controls which `secrets.<NAME>`
  * references get written into YAML we generate, not user-facing validation),
- * and dedupes. VITALGATE_TOKEN is already wired in separately, so a repeat
- * entry for it would just be a harmless no-op duplicate — still stripped to
- * keep the generated workflow's env block clean.
+ * and dedupes.
  */
 function sanitizeEnvVarNames(names: string[] | undefined): string[] {
 	if (!names) return [];
 	const seen = new Set<string>();
 	for (const raw of names) {
 		const name = raw.trim();
-		if (
-			!name ||
-			!ENV_VAR_NAME_PATTERN.test(name) ||
-			name === "VITALGATE_TOKEN"
-		) {
-			continue;
-		}
+		if (!name || !ENV_VAR_NAME_PATTERN.test(name)) continue;
 		seen.add(name);
 	}
 	return Array.from(seen);
@@ -196,7 +188,6 @@ async function regenerateWorkflow(
 		repo.fullName,
 		vitalgateWorkflowYaml({
 			defaultBranch: repo.defaultBranch,
-			githubRepoId: repo.githubRepoId,
 			packageManager,
 			pnpmVersion,
 			yarnIsBerry,
@@ -268,15 +259,23 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					postPrComments: data.postComments ?? true,
 					installationId,
 				})
-				.onConflictDoNothing({
-					target: [repos.organizationId, repos.githubRepoId],
-				})
+				.onConflictDoNothing({ target: repos.githubRepoId })
 				.returning({ id: repos.id, envVarNames: repos.envVarNames });
 
 			if (!inserted) {
-				// Connecting is one-time; a connected repo's workflow is refreshed
-				// from its Settings tab (regenerateRepoWorkflow) instead.
-				workflowErrors.push(`${repo.fullName}: already connected`);
+				// Connecting is one-time (a connected repo's workflow is refreshed
+				// from its Settings tab), and a repository belongs to one
+				// workspace at a time.
+				const [owner] = await db
+					.select({ organizationId: repos.organizationId })
+					.from(repos)
+					.where(eq(repos.githubRepoId, repo.id))
+					.limit(1);
+				workflowErrors.push(
+					owner?.organizationId === organizationId
+						? `${repo.fullName}: already connected`
+						: `${repo.fullName}: already connected to another Vitalgate workspace`,
+				);
 				continue;
 			}
 			const envVarNames = inserted.envVarNames;

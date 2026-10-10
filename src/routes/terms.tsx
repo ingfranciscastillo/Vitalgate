@@ -88,11 +88,10 @@ function Terms() {
 							<h2>3. Your account</h2>
 							<p>
 								You sign in with GitHub. You're responsible for activity under
-								your account and your workspace, including keeping your
-								Vitalgate CI tokens secret — anyone with a token can submit
-								results for your workspace. If you think a token or your account
-								has been compromised, revoke the token in Settings and tell us
-								at{" "}
+								your account and your workspace, and for who has write access to
+								the repositories you connect: their workflow runs report results
+								to your workspace. If you think your account has been
+								compromised, tell us at{" "}
 								<a
 									href={`mailto:${LEGAL_CONTACT_EMAIL}`}
 									className="text-primary hover:underline"

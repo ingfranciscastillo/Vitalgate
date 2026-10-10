@@ -12,6 +12,10 @@ import {
 import { deliverAlerts } from "@/lib/alert-delivery.server";
 import { getOrgAlertRules } from "@/lib/alert-rules.server";
 import { getAppUrl } from "@/lib/app-url.server";
+import {
+	pullNumberFromRef,
+	verifyGithubOidcToken,
+} from "@/lib/github-oidc.server";
 import { upsertPrCommentAsApp } from "@/lib/github-pr-comment.server";
 import type {
 	AlertRuleKey,
@@ -20,7 +24,6 @@ import type {
 	Severity,
 } from "@/lib/mock-data";
 import { renderPrComment } from "@/lib/pr-comment";
-import { verifyOrgToken } from "@/lib/verify-org-token.server";
 
 const metricsSchema = z
 	.object({
@@ -33,11 +36,10 @@ const metricsSchema = z
 	})
 	.strict();
 
-// Bounded to GitHub's own limits: these strings end up in alert emails and
-// Slack/Discord posts, so a CI token holder can't push arbitrarily large ones.
+// Which repo and PR a run is for come from its GitHub-signed OIDC token, not
+// from here. These strings are bounded to GitHub's own limits: they end up
+// in alert emails and Slack/Discord posts.
 const ingestBodySchema = z.object({
-	githubRepoId: z.string().regex(/^\d{1,20}$/),
-	prNumber: z.number().int().positive(),
 	prTitle: z.string().min(1).max(256),
 	prAuthor: z.string().min(1).max(39),
 	branch: z.string().min(1).max(255),
@@ -130,8 +132,17 @@ async function handleIngest(request: Request) {
 	const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 	if (!token) return json({ error: "Missing bearer token" }, 401);
 
-	const organizationId = await verifyOrgToken(token);
-	if (!organizationId) return json({ error: "Invalid token" }, 401);
+	// The workflow authenticates with an OIDC token GitHub issued for this
+	// run, meant for this Vitalgate (audience = our origin). It names the
+	// repository and pull request; nothing else in the request is trusted
+	// for that.
+	const claims = await verifyGithubOidcToken(token, getAppUrl());
+	if (!claims) return json({ error: "Invalid token" }, 401);
+	const prNumber =
+		claims.event_name === "pull_request" ? pullNumberFromRef(claims.ref) : null;
+	if (!prNumber) {
+		return json({ error: "Only pull_request runs can report results" }, 400);
+	}
 
 	let bodyJson: unknown;
 	try {
@@ -149,24 +160,21 @@ async function handleIngest(request: Request) {
 	const [repo] = await db
 		.select({
 			id: repos.id,
+			organizationId: repos.organizationId,
 			fullName: repos.fullName,
 			postPrComments: repos.postPrComments,
 			installationId: repos.installationId,
 		})
 		.from(repos)
-		.where(
-			and(
-				eq(repos.organizationId, organizationId),
-				eq(repos.githubRepoId, body.githubRepoId),
-			),
-		)
+		.where(eq(repos.githubRepoId, claims.repository_id))
 		.limit(1);
 	if (!repo) {
 		return json(
-			{ error: "Repo not connected to this organization on Vitalgate" },
+			{ error: `${claims.repository} isn't connected to Vitalgate` },
 			404,
 		);
 	}
+	const { organizationId } = repo;
 
 	const budgetRows = await db
 		.select({
@@ -225,10 +233,7 @@ async function handleIngest(request: Request) {
 		.select({ metrics: pullRequests.metrics })
 		.from(pullRequests)
 		.where(
-			and(
-				eq(pullRequests.repoId, repo.id),
-				ne(pullRequests.number, body.prNumber),
-			),
+			and(eq(pullRequests.repoId, repo.id), ne(pullRequests.number, prNumber)),
 		)
 		.orderBy(desc(pullRequests.openedAt))
 		.limit(1);
@@ -238,7 +243,7 @@ async function handleIngest(request: Request) {
 		.insert(pullRequests)
 		.values({
 			repoId: repo.id,
-			number: body.prNumber,
+			number: prNumber,
 			title: body.prTitle,
 			author: body.prAuthor,
 			branch: body.branch,
@@ -270,8 +275,8 @@ async function handleIngest(request: Request) {
 		const failed = violations.filter((v) => v.severity === "fail");
 		const message =
 			failed.length === 1
-				? `PR #${body.prNumber} exceeded the ${failed[0].metric} budget (${failed[0].value} vs max ${failed[0].max}).`
-				: `PR #${body.prNumber} exceeded ${failed.length} required budgets: ${failed.map((v) => v.metric).join(", ")}.`;
+				? `PR #${prNumber} exceeded the ${failed[0].metric} budget (${failed[0].value} vs max ${failed[0].max}).`
+				: `PR #${prNumber} exceeded ${failed.length} required budgets: ${failed.map((v) => v.metric).join(", ")}.`;
 		newAlerts.push({
 			repoId: repo.id,
 			level: "critical",
@@ -293,7 +298,7 @@ async function handleIngest(request: Request) {
 				repoId: repo.id,
 				level: "warning",
 				title: "3-day regression",
-				message: `PR #${body.prNumber}: ${regressed.join(", ")} worsened more than ${REGRESSION_THRESHOLD * 100}% vs this repo's 3-day average.`,
+				message: `PR #${prNumber}: ${regressed.join(", ")} worsened more than ${REGRESSION_THRESHOLD * 100}% vs this repo's 3-day average.`,
 			});
 		}
 	}
@@ -327,7 +332,7 @@ async function handleIngest(request: Request) {
 		const deliveredTo = await deliverAlerts(newAlerts, {
 			organizationId,
 			repoFullName: repo.fullName,
-			prNumber: body.prNumber,
+			prNumber: prNumber,
 			prTitle: body.prTitle,
 			prAuthor: body.prAuthor,
 			pullId: pull.id,
@@ -366,7 +371,7 @@ async function handleIngest(request: Request) {
 		(await upsertPrCommentAsApp({
 			installationId: repo.installationId,
 			repoFullName: repo.fullName,
-			prNumber: body.prNumber,
+			prNumber: prNumber,
 			body: comment,
 		}));
 

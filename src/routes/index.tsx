@@ -558,7 +558,7 @@ function Faq() {
 		},
 		{
 			q: "Where do the Lighthouse runs happen?",
-			a: "On your own GitHub Actions runner. Vitalgate never builds or hosts your app: it only reads the files it needs to set up the workflow (like package.json), and the workflow sends the results back authenticated with your workspace's CI token.",
+			a: "On your own GitHub Actions runner. Vitalgate never builds or hosts your app: it only reads the files it needs to set up the workflow (like package.json), and the workflow sends the results back with a token GitHub signs for that repository, so there's no Vitalgate secret to set up.",
 		},
 		{
 			q: "Can I have different budgets per route?",
