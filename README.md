@@ -48,7 +48,7 @@ sequenceDiagram
 Audits run on **your own** GitHub Actions runner: Vitalgate never builds or hosts your app. Each repository picks how in its Settings: **build** the app in the workflow and audit it on `localhost`, or audit the **preview deployment** a host such as Vercel, Netlify or Render reports to GitHub for the PR (no build, no secrets; Vitalgate finds the PR from the deployed commit). The workflow proves which repository and pull request it reports for with a short-lived token signed by GitHub (OIDC), so there is no secret to copy into each repository.
 
 > [!NOTE]
-> Lighthouse lab runs can't measure INP, which needs real user interactions. TBT is its lab stand-in, so budgets cover LCP, CLS, FCP, TBT and the performance score.
+> Lighthouse lab runs can't measure INP, which needs real user interactions. TBT is its lab stand-in, so budgets cover LCP, CLS, FCP, TBT and the performance score. Real-user INP, LCP and CLS for each repository's live site come from the [Chrome UX Report](https://developer.chrome.com/docs/crux) and show on the repository page.
 
 ## Getting started
 
@@ -88,6 +88,7 @@ Every variable is documented in [`.env.example`](.env.example). The main pieces:
 | `CRON_SECRET` | Bearer token Vercel Cron sends to the digest endpoints |
 | `INTEGRATION_ENCRYPTION_KEY` | Encrypts Slack/Discord webhook URLs (32 bytes, base64) |
 | `SLACK_*` / `DISCORD_*` | OAuth apps for Slack and Discord alerts |
+| `CRUX_API_KEY` | Google Cloud API key for the Chrome UX Report API (real-user metrics). Free; without it the repository page explains how to turn them on. |
 
 ### GitHub OAuth app (sign-in)
 
@@ -117,6 +118,10 @@ base64 -w0 your-app.private-key.pem   # → GITHUB_APP_PRIVATE_KEY
 > ```bash
 > npx smee-client --url https://smee.io/<channel> --target http://localhost:3000/api/github/webhook
 > ```
+
+### Real-user metrics (Chrome UX Report)
+
+In [Google Cloud Console](https://console.cloud.google.com/), enable the **Chrome UX Report API** for a project, create an API key under **APIs & Services → Credentials** (restrict it to that API), and set it as `CRUX_API_KEY`. Each repository's production URL is prefilled from its GitHub **Website** field and can be changed in its Settings. CrUX only covers public sites with enough Chrome traffic; answers are cached for a day per repository.
 
 ### Plans
 

@@ -31,7 +31,6 @@ export interface RepoDetailPull {
 export interface RepoDetailSeriesPoint {
 	date: string;
 	lcp: number | null;
-	inp: number | null;
 	perf: number | null;
 }
 
@@ -54,6 +53,8 @@ export interface RepoDetail {
 	envVarNames: string[];
 	postPrComments: boolean;
 	auditMode: "build" | "preview";
+	/** Origin real-user metrics are read for, or null if not set. */
+	productionUrl: string | null;
 	budgets: RepoDetailBudget[];
 	pulls: RepoDetailPull[];
 	series: RepoDetailSeriesPoint[];
@@ -77,6 +78,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 				envVarNames: repos.envVarNames,
 				postPrComments: repos.postPrComments,
 				auditMode: repos.auditMode,
+				productionUrl: repos.productionUrl,
 			})
 			.from(repos)
 			.where(
@@ -122,9 +124,6 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 						lcp: sql<
 							string | null
 						>`avg((${pullRequests.metrics}->>'LCP')::numeric)`,
-						inp: sql<
-							string | null
-						>`avg((${pullRequests.metrics}->>'INP')::numeric)`,
 						perf: sql<
 							string | null
 						>`avg((${pullRequests.metrics}->>'PERF')::numeric)`,
@@ -157,6 +156,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 			envVarNames: repo.envVarNames,
 			postPrComments: repo.postPrComments,
 			auditMode: repo.auditMode,
+			productionUrl: repo.productionUrl,
 			budgets: budgetRows,
 			pulls: pullRows,
 			alerts: alertRows.map((a) => ({
@@ -166,7 +166,6 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 			series: seriesRows.map((r) => ({
 				date: r.date,
 				lcp: r.lcp != null ? Number(r.lcp) : null,
-				inp: r.inp != null ? Number(r.inp) : null,
 				perf: r.perf != null ? Number(r.perf) : null,
 			})),
 		};

@@ -27,6 +27,7 @@ import {
 } from "recharts";
 import { AppShell } from "@/components/app-shell";
 import { BudgetsEditor } from "@/components/budgets-editor";
+import { RealUserMetrics } from "@/components/real-user-metrics";
 import { StatusBadge } from "@/components/status-badge";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -35,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { AUDIT_MODES } from "@/lib/audit-modes";
+import { setRepoProductionUrl } from "@/lib/crux.functions";
 import { formatDelivery, timeAgo } from "@/lib/format";
 import {
 	disconnectRepository,
@@ -83,6 +85,8 @@ function RepoDetail() {
 	if (!repo) throw notFound();
 
 	const [envVarNames, setEnvVarNames] = useState(repo.envVarNames.join(", "));
+	const [productionUrl, setProductionUrl] = useState(repo.productionUrl ?? "");
+	const [tab, setTab] = useState("overview");
 	const [confirmingDisconnect, setConfirmingDisconnect] = useState(false);
 	const isAdmin = useIsOrgAdmin();
 	const reduce = useReducedMotion();
@@ -146,6 +150,19 @@ function RepoDetail() {
 				err instanceof Error
 					? err.message
 					: "Could not regenerate the workflow",
+			),
+	});
+
+	const saveProductionUrl = useMutation({
+		mutationFn: setRepoProductionUrl,
+		onSuccess: ({ origin }) => {
+			setProductionUrl(origin ?? "");
+			queryClient.invalidateQueries({ queryKey: ["repos", repoId] });
+			toast.success(origin ? "Production URL saved" : "Production URL removed");
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error ? err.message : "Could not save the URL",
 			),
 	});
 
@@ -214,7 +231,7 @@ function RepoDetail() {
 				</div>
 			</div>
 
-			<Tabs defaultValue="overview">
+			<Tabs value={tab} onValueChange={(value) => setTab(String(value))}>
 				<TabsList>
 					<TabsTrigger value="overview">Overview</TabsTrigger>
 					<TabsTrigger value="pulls">Pull Requests</TabsTrigger>
@@ -224,6 +241,11 @@ function RepoDetail() {
 				</TabsList>
 
 				<TabsContent value="overview" className="mt-6 space-y-4">
+					<RealUserMetrics
+						repoId={repo.id}
+						isAdmin={isAdmin === true}
+						onEditUrl={() => setTab("settings")}
+					/>
 					{repo.series.length === 0 ? (
 						<Card className="p-10 text-center">
 							<p className="text-sm text-muted-foreground">
@@ -283,80 +305,42 @@ function RepoDetail() {
 									</ResponsiveContainer>
 								</div>
 							</Card>
-							<div className="grid md:grid-cols-2 gap-4">
-								<Card className="p-5">
-									<h2 className="font-semibold">LCP trend</h2>
-									<div className="mt-4 h-40">
-										<ResponsiveContainer>
-											<AreaChart
-												data={repo.series}
-												margin={{ left: -10, right: 8, top: 8 }}
-											>
-												<XAxis
-													dataKey="date"
-													tick={{ fontSize: 10 }}
-													stroke="var(--color-muted-foreground)"
-												/>
-												<YAxis
-													tick={{ fontSize: 10 }}
-													stroke="var(--color-muted-foreground)"
-												/>
-												<Tooltip
-													contentStyle={{
-														background: "var(--color-card)",
-														border: "1px solid var(--color-border)",
-														fontSize: 12,
-													}}
-												/>
-												<Area
-													dataKey="lcp"
-													stroke="var(--color-chart-3)"
-													fill="var(--color-chart-3)"
-													fillOpacity={0.18}
-													strokeWidth={2}
-													connectNulls
-												/>
-											</AreaChart>
-										</ResponsiveContainer>
-									</div>
-								</Card>
-								<Card className="p-5">
-									<h2 className="font-semibold">INP trend</h2>
-									<div className="mt-4 h-40">
-										<ResponsiveContainer>
-											<AreaChart
-												data={repo.series}
-												margin={{ left: -10, right: 8, top: 8 }}
-											>
-												<XAxis
-													dataKey="date"
-													tick={{ fontSize: 10 }}
-													stroke="var(--color-muted-foreground)"
-												/>
-												<YAxis
-													tick={{ fontSize: 10 }}
-													stroke="var(--color-muted-foreground)"
-												/>
-												<Tooltip
-													contentStyle={{
-														background: "var(--color-card)",
-														border: "1px solid var(--color-border)",
-														fontSize: 12,
-													}}
-												/>
-												<Area
-													dataKey="inp"
-													stroke="var(--color-chart-4)"
-													fill="var(--color-chart-4)"
-													fillOpacity={0.18}
-													strokeWidth={2}
-													connectNulls
-												/>
-											</AreaChart>
-										</ResponsiveContainer>
-									</div>
-								</Card>
-							</div>
+							<Card className="p-5">
+								<h2 className="font-semibold">LCP trend (lab)</h2>
+								<div className="mt-4 h-40">
+									<ResponsiveContainer>
+										<AreaChart
+											data={repo.series}
+											margin={{ left: -10, right: 8, top: 8 }}
+										>
+											<XAxis
+												dataKey="date"
+												tick={{ fontSize: 10 }}
+												stroke="var(--color-muted-foreground)"
+											/>
+											<YAxis
+												tick={{ fontSize: 10 }}
+												stroke="var(--color-muted-foreground)"
+											/>
+											<Tooltip
+												contentStyle={{
+													background: "var(--color-card)",
+													border: "1px solid var(--color-border)",
+													fontSize: 12,
+												}}
+											/>
+											<Area
+												dataKey="lcp"
+												stroke="var(--color-chart-3)"
+												fill="var(--color-chart-3)"
+												fillOpacity={0.18}
+												strokeWidth={2}
+												connectNulls
+											/>
+										</AreaChart>
+									</ResponsiveContainer>
+								</div>
+							</Card>
 						</>
 					)}
 				</TabsContent>
@@ -540,6 +524,47 @@ function RepoDetail() {
 										.
 									</p>
 								)}
+							</Card>
+							<Card className="p-5">
+								<h2 className="font-semibold text-sm">Production URL</h2>
+								<p className="mt-1 text-xs text-muted-foreground">
+									Your live site. Vitalgate reads how real Chrome users
+									experience it — including INP — from the Chrome UX Report.
+								</p>
+								<form
+									className="mt-4 flex flex-wrap items-end gap-3"
+									onSubmit={(e) => {
+										e.preventDefault();
+										saveProductionUrl.mutate({
+											data: { repoId, url: productionUrl },
+										});
+									}}
+								>
+									<div className="min-w-0 flex-1 space-y-1.5">
+										<Label htmlFor="production-url" className="text-sm">
+											URL
+										</Label>
+										<Input
+											id="production-url"
+											type="url"
+											inputMode="url"
+											placeholder="https://example.com"
+											value={productionUrl}
+											onChange={(e) => setProductionUrl(e.target.value)}
+											className="font-mono text-xs"
+										/>
+									</div>
+									<Button
+										type="submit"
+										size="sm"
+										disabled={
+											saveProductionUrl.isPending ||
+											productionUrl.trim() === (repo.productionUrl ?? "")
+										}
+									>
+										{saveProductionUrl.isPending ? "Saving…" : "Save"}
+									</Button>
+								</form>
 							</Card>
 							<Card className="p-5">
 								<div className="flex items-start justify-between gap-4">

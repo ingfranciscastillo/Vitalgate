@@ -10,6 +10,7 @@ import {
 	timestamp,
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
+import type { CruxSnapshot } from "@/lib/crux";
 import type {
 	Action,
 	AlertChannel,
@@ -69,6 +70,11 @@ export const repos = pgTable(
 			.$type<"build" | "preview">(),
 		/** Whether /api/ingest hands the workflow a results comment to post on the PR. */
 		postPrComments: boolean("post_pr_comments").notNull().default(true),
+		/**
+		 * Origin of the live site, e.g. "https://storefront.com" — what the
+		 * Chrome UX Report is queried for to show real-user metrics.
+		 */
+		productionUrl: text("production_url"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [
@@ -187,6 +193,22 @@ export const alertRules = pgTable(
 		),
 	],
 );
+
+/**
+ * The last Chrome UX Report answer for a repo's production URL, so the repo
+ * page doesn't query Google on every view. CrUX only updates daily, so a
+ * cached row is reused for a day; `snapshot` is null when CrUX has no data
+ * for the origin (not enough real-user traffic).
+ */
+export const cruxReports = pgTable("crux_reports", {
+	repoId: text("repo_id")
+		.primaryKey()
+		.references(() => repos.id, { onDelete: "cascade" }),
+	/** The origin this answer is for — a changed production URL invalidates it. */
+	origin: text("origin").notNull(),
+	snapshot: jsonb("snapshot").$type<CruxSnapshot>(),
+	fetchedAt: timestamp("fetched_at").defaultNow().notNull(),
+});
 
 export const reposRelations = relations(repos, ({ many, one }) => ({
 	organization: one(organization, {

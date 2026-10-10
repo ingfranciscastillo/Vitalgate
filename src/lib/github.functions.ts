@@ -6,6 +6,7 @@ import { budgets, githubInstallations, repos } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { ensureSession } from "@/lib/auth.functions";
 import { actionFor } from "@/lib/budgets";
+import { toOrigin } from "@/lib/crux";
 import {
 	type CommitWorkflowResult,
 	commitWorkflowFile,
@@ -318,6 +319,9 @@ export const connectRepositories = createServerFn({ method: "POST" })
 					envVarNames: typedEnvVarNames,
 					postPrComments: data.postComments ?? true,
 					auditMode: data.auditMode,
+					// The repo's GitHub "Website", when set, is usually the live
+					// site — a starting point for real-user metrics.
+					productionUrl: repo.homepage ? toOrigin(repo.homepage) : null,
 					installationId,
 				})
 				.onConflictDoNothing({ target: repos.githubRepoId })

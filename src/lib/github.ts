@@ -10,6 +10,8 @@ export interface GhRepo {
 	language: string;
 	updated: string;
 	org: string;
+	/** The repo's "Website" field on GitHub, when it's an https URL. */
+	homepage: string | null;
 }
 
 /** Shape of the fields we read from GitHub's REST API repo object. */
@@ -23,6 +25,7 @@ interface GithubApiRepo {
 	language: string | null;
 	pushed_at: string | null;
 	owner: { login: string };
+	homepage: string | null;
 }
 
 function mapRepo(r: GithubApiRepo): GhRepo {
@@ -36,6 +39,7 @@ function mapRepo(r: GithubApiRepo): GhRepo {
 		language: r.language ?? "Unknown",
 		updated: timeAgo(r.pushed_at),
 		org: r.owner.login,
+		homepage: r.homepage?.startsWith("https://") ? r.homepage : null,
 	};
 }
 
