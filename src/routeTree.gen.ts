@@ -31,6 +31,7 @@ import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiCronDailyDigestRouteImport } from './routes/api/cron/daily-digest'
 import { Route as ApiCronWeeklyDigestRouteImport } from './routes/api/cron/weekly-digest'
 import { Route as ApiGithubSetupRouteImport } from './routes/api/github/setup'
+import { Route as ApiGithubWebhookRouteImport } from './routes/api/github/webhook'
 import { Route as ApiIntegrationsDiscordCallbackRouteImport } from './routes/api/integrations/discord/callback'
 import { Route as ApiIntegrationsSlackCallbackRouteImport } from './routes/api/integrations/slack/callback'
 
@@ -147,6 +148,11 @@ const ApiGithubSetupRoute = ApiGithubSetupRouteImport.update({
   path: '/api/github/setup',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiGithubWebhookRoute = ApiGithubWebhookRouteImport.update({
+  id: '/api/github/webhook',
+  path: '/api/github/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIntegrationsDiscordCallbackRoute =
   ApiIntegrationsDiscordCallbackRouteImport.update({
     id: '/api/integrations/discord/callback',
@@ -180,6 +186,7 @@ export interface FileRoutesByFullPath {
   '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
+  '/api/github/webhook': typeof ApiGithubWebhookRoute
   '/pulls/': typeof AuthenticatedPullsIndexRoute
   '/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -205,6 +212,7 @@ export interface FileRoutesByTo {
   '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
+  '/api/github/webhook': typeof ApiGithubWebhookRoute
   '/pulls': typeof AuthenticatedPullsIndexRoute
   '/repositories': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -232,6 +240,7 @@ export interface FileRoutesById {
   '/api/cron/daily-digest': typeof ApiCronDailyDigestRoute
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
+  '/api/github/webhook': typeof ApiGithubWebhookRoute
   '/_authenticated/pulls/': typeof AuthenticatedPullsIndexRoute
   '/_authenticated/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
@@ -259,6 +268,7 @@ export interface FileRouteTypes {
     | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
+    | '/api/github/webhook'
     | '/pulls/'
     | '/repositories/'
     | '/api/integrations/discord/callback'
@@ -284,6 +294,7 @@ export interface FileRouteTypes {
     | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
+    | '/api/github/webhook'
     | '/pulls'
     | '/repositories'
     | '/api/integrations/discord/callback'
@@ -310,6 +321,7 @@ export interface FileRouteTypes {
     | '/api/cron/daily-digest'
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
+    | '/api/github/webhook'
     | '/_authenticated/pulls/'
     | '/_authenticated/repositories/'
     | '/api/integrations/discord/callback'
@@ -330,6 +342,7 @@ export interface RootRouteChildren {
   ApiCronDailyDigestRoute: typeof ApiCronDailyDigestRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
   ApiGithubSetupRoute: typeof ApiGithubSetupRoute
+  ApiGithubWebhookRoute: typeof ApiGithubWebhookRoute
   ApiIntegrationsDiscordCallbackRoute: typeof ApiIntegrationsDiscordCallbackRoute
   ApiIntegrationsSlackCallbackRoute: typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -490,6 +503,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGithubSetupRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/github/webhook': {
+      id: '/api/github/webhook'
+      path: '/api/github/webhook'
+      fullPath: '/api/github/webhook'
+      preLoaderRoute: typeof ApiGithubWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/discord/callback': {
       id: '/api/integrations/discord/callback'
       path: '/api/integrations/discord/callback'
@@ -549,6 +569,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiCronDailyDigestRoute: ApiCronDailyDigestRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,
   ApiGithubSetupRoute: ApiGithubSetupRoute,
+  ApiGithubWebhookRoute: ApiGithubWebhookRoute,
   ApiIntegrationsDiscordCallbackRoute: ApiIntegrationsDiscordCallbackRoute,
   ApiIntegrationsSlackCallbackRoute: ApiIntegrationsSlackCallbackRoute,
 }

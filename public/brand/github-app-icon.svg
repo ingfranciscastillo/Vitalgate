@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#131417"/>
+  <!-- The 48x48 logo mark, scaled 9x and centred on (24, 24): offset 256 - 24 * 9 = 40 -->
+  <g transform="translate(40 40) scale(9)">
+    <path d="M14 10H9V38H14" stroke="#F2F1EE" stroke-width="4" fill="none"/>
+    <path d="M34 10H39V38H34" stroke="#F2F1EE" stroke-width="4" fill="none"/>
+    <path d="M16 24H20L22 17L26 31L28 24H32" stroke="#DC7F2E" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="square"/>
+  </g>
+</svg>
