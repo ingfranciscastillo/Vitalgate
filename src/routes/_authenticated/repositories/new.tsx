@@ -1,7 +1,9 @@
 import {
 	ArrowLeftIcon,
+	ArrowSquareOutIcon,
 	BuildingsIcon,
 	CaretRightIcon,
+	CheckCircleIcon,
 	GitBranchIcon,
 	GithubLogoIcon,
 	LockIcon,
@@ -13,7 +15,7 @@ import {
 	useQueryClient,
 	useSuspenseQuery,
 } from "@tanstack/react-query";
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import toast from "react-hot-toast";
@@ -99,7 +101,6 @@ function ConnectRepo() {
 	} = useSuspenseQuery(connectableReposQueryOptions());
 	const { data: connectedRepos } = useQuery(orgReposQueryOptions());
 	const { data: activeOrg } = authClient.useActiveOrganization();
-	const navigate = useNavigate();
 	const [query, setQuery] = useState("");
 	const [org, setOrg] = useState<string>("all");
 	const [selected, setSelected] = useState<string[]>([]);
@@ -127,6 +128,10 @@ function ConnectRepo() {
 		chosenAuditMode ?? (previewDetected ? "preview" : "build");
 	const [shakeSummary, setShakeSummary] = useState(false);
 	const [showLimitDialog, setShowLimitDialog] = useState(false);
+	const [justConnected, setJustConnected] = useState<{
+		repos: { id: string; fullName: string }[];
+		auditMode: AuditMode;
+	} | null>(null);
 	const reduce = useReducedMotion();
 
 	const orgs = useMemo(
@@ -167,6 +172,7 @@ function ConnectRepo() {
 		mutationFn: connectRepositories,
 		onSuccess: ({
 			connected,
+			connectedRepos: newlyConnected,
 			workflowsAdded,
 			workflowsUpdated,
 			workflowErrors,
@@ -182,7 +188,11 @@ function ConnectRepo() {
 				toast.error(`Couldn't add workflow to ${err}`);
 			}
 			queryClient.invalidateQueries({ queryKey: ["repos"] });
-			navigate({ to: "/repositories" });
+			// Next step on the way to a first audit: opening a pull request.
+			if (newlyConnected.length > 0) {
+				setJustConnected({ repos: newlyConnected, auditMode });
+				window.scrollTo({ top: 0 });
+			}
 		},
 		onError: (error) => {
 			toast.error(error instanceof Error ? error.message : "Could not connect");
@@ -302,6 +312,14 @@ function ConnectRepo() {
 	const connectLabel = connectMutation.isPending
 		? "Connecting…"
 		: `Connect ${selected.length > 0 ? `${selected.length} ` : ""}repositor${selected.length === 1 ? "y" : "ies"}`;
+
+	if (justConnected) {
+		return (
+			<AppShell title="Connect a repository">
+				<ConnectedNextStep {...justConnected} />
+			</AppShell>
+		);
+	}
 
 	return (
 		<AppShell title="Connect a repository">
@@ -740,5 +758,74 @@ function ConnectRepo() {
 				</div>
 			</div>
 		</AppShell>
+	);
+}
+
+/**
+ * Shown right after connecting: what happens next and the one action that
+ * gets to a first audit — opening a pull request.
+ */
+function ConnectedNextStep({
+	repos,
+	auditMode,
+}: {
+	repos: { id: string; fullName: string }[];
+	auditMode: AuditMode;
+}) {
+	const first = repos[0];
+	return (
+		<Card className="mx-auto max-w-2xl p-8">
+			<CheckCircleIcon className="h-8 w-8 text-success" weight="fill" />
+			<h2 className="mt-3 text-xl font-bold tracking-tight">
+				{repos.length === 1
+					? `${first.fullName} is connected`
+					: `${repos.length} repositories connected`}
+			</h2>
+			<p className="mt-2 text-sm text-muted-foreground">
+				{auditMode === "preview"
+					? "Vitalgate added a workflow that runs when your host finishes a preview deployment for a pull request."
+					: "Vitalgate added a workflow that builds and audits every pull request in GitHub Actions."}
+			</p>
+			<div className="mt-6 rounded-md border border-border p-4">
+				<h3 className="text-sm font-semibold">
+					Next: open a pull request to see it work
+				</h3>
+				<p className="mt-1 text-sm text-muted-foreground">
+					Any small change will do. A few minutes after you open it
+					{auditMode === "preview" ? " and the preview deploys" : ""}, the pull
+					request gets the "Vitalgate" check and a results comment.
+				</p>
+				<div className="mt-4 flex flex-wrap gap-2">
+					<a
+						href={`https://github.com/${first.fullName}/compare`}
+						target="_blank"
+						rel="noreferrer"
+					>
+						<Button className="bg-brand text-brand-foreground hover:bg-brand/90">
+							Open a pull request on GitHub
+							<ArrowSquareOutIcon className="ml-1.5 h-4 w-4" />
+						</Button>
+					</a>
+					<Link to="/repositories/$repoId" params={{ repoId: first.id }}>
+						<Button variant="outline">Review its budgets</Button>
+					</Link>
+				</div>
+			</div>
+			{repos.length > 1 && (
+				<ul className="mt-4 space-y-1 text-sm">
+					{repos.map((r) => (
+						<li key={r.id}>
+							<Link
+								to="/repositories/$repoId"
+								params={{ repoId: r.id }}
+								className="font-mono text-xs text-muted-foreground hover:text-foreground"
+							>
+								{r.fullName}
+							</Link>
+						</li>
+					))}
+				</ul>
+			)}
+		</Card>
 	);
 }

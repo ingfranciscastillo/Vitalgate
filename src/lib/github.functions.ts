@@ -290,6 +290,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 		const presetBudgets = PRESET_BUDGETS[data.preset] ?? [];
 		const typedEnvVarNames = sanitizeEnvVarNames(data.envVarNames);
 		let connected = 0;
+		const connectedRepos: { id: string; fullName: string }[] = [];
 		let workflowsAdded = 0;
 		let workflowsUpdated = 0;
 		const workflowErrors: string[] = [];
@@ -345,6 +346,7 @@ export const connectRepositories = createServerFn({ method: "POST" })
 			}
 			const envVarNames = inserted.envVarNames;
 			connected++;
+			connectedRepos.push({ id: inserted.id, fullName: repo.fullName });
 
 			if (presetBudgets.length > 0) {
 				await db.insert(budgets).values(
@@ -387,7 +389,13 @@ export const connectRepositories = createServerFn({ method: "POST" })
 			}
 		}
 
-		return { connected, workflowsAdded, workflowsUpdated, workflowErrors };
+		return {
+			connected,
+			connectedRepos,
+			workflowsAdded,
+			workflowsUpdated,
+			workflowErrors,
+		};
 	});
 
 /** Edits one already-connected repo's forwarded env var names and recommits its workflow — the Settings tab on a repo's detail page. */
