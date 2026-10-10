@@ -1,4 +1,5 @@
 import {
+	ArrowLeftIcon,
 	InfoIcon,
 	WarningIcon,
 	WarningOctagonIcon,
@@ -199,9 +200,9 @@ function RepoDetail() {
 				<div>
 					<Link
 						to="/repositories"
-						className="text-xs text-muted-foreground hover:text-foreground"
+						className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
 					>
-						← Repositories
+						<ArrowLeftIcon className="h-3.5 w-3.5" /> Back to repositories
 					</Link>
 					<h1 className="mt-2 text-2xl font-semibold tracking-tight font-mono">
 						{repo.fullName}

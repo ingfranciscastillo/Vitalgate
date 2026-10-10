@@ -1,5 +1,6 @@
 import {
 	ArrowDownRightIcon,
+	ArrowLeftIcon,
 	ArrowUpRightIcon,
 	CheckCircleIcon,
 	XCircleIcon,
@@ -58,9 +59,9 @@ function PrDetail() {
 			<div className="mb-6">
 				<Link
 					to="/pulls"
-					className="text-xs text-muted-foreground hover:text-foreground"
+					className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground"
 				>
-					← Pull Requests
+					<ArrowLeftIcon className="h-3.5 w-3.5" /> Back to pull requests
 				</Link>
 				<div className="mt-2 flex flex-wrap items-center gap-3">
 					<span className="font-mono text-sm text-muted-foreground">
