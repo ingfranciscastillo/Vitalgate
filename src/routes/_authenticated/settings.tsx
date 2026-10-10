@@ -679,9 +679,9 @@ function BillingCard() {
 		refetchInterval: (query) =>
 			query.state.data?.plan !== "pro" && Date.now() < pollUntil ? 2000 : false,
 	});
-	const [redirecting, setRedirecting] = useState<"checkout" | "portal" | null>(
-		null,
-	);
+	const [redirecting, setRedirecting] = useState<
+		"checkout" | "checkout-yearly" | "portal" | null
+	>(null);
 
 	useEffect(() => {
 		if (!justPaid) return;
@@ -700,13 +700,16 @@ function BillingCard() {
 	const sub = billing?.subscription;
 	const founder = billing?.founder ?? null;
 
-	const upgrade = async () => {
+	const upgrade = async (period: "month" | "year") => {
 		if (!org) return;
-		setRedirecting("checkout");
+		setRedirecting(period === "year" ? "checkout-yearly" : "checkout");
 		const { error } = await authClient.checkout({
-			slug: "pro",
+			slug: period === "year" ? "pro-yearly" : "pro",
 			reference_id: org.id,
-			...(founder ? { discount_id: founder.discountId } : {}),
+			// The founding discount is for the monthly plan only.
+			...(founder && period === "month"
+				? { discount_id: founder.discountId }
+				: {}),
 		});
 		if (error) {
 			toast.error(error.message ?? "Could not open checkout");
@@ -741,8 +744,10 @@ function BillingCard() {
 					</p>
 				</div>
 				<span className="font-mono text-2xl font-semibold">
-					{pro ? "$29" : "$0"}
-					<span className="text-muted-foreground text-sm">/mo</span>
+					{!pro ? "$0" : sub?.interval === "year" ? "$290" : "$29"}
+					<span className="text-muted-foreground text-sm">
+						{pro && sub?.interval === "year" ? "/yr" : "/mo"}
+					</span>
 				</span>
 			</div>
 
@@ -791,7 +796,7 @@ function BillingCard() {
 					<Button
 						className="bg-brand text-brand-foreground hover:bg-brand/90"
 						disabled={redirecting !== null || justPaid}
-						onClick={upgrade}
+						onClick={() => upgrade("month")}
 					>
 						{redirecting === "checkout"
 							? "Opening checkout…"
@@ -800,6 +805,17 @@ function BillingCard() {
 								: founder
 									? `Upgrade to Pro, $${founder.price}/month`
 									: "Upgrade to Pro, $29/month"}
+					</Button>
+				)}
+				{!pro && billing?.yearly && isAdmin && !justPaid && (
+					<Button
+						variant="outline"
+						disabled={redirecting !== null}
+						onClick={() => upgrade("year")}
+					>
+						{redirecting === "checkout-yearly"
+							? "Opening checkout…"
+							: "Yearly, $290 (2 months free)"}
 					</Button>
 				)}
 				{pro && sub?.managedByYou && (

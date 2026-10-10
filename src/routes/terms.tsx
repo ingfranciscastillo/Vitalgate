@@ -201,21 +201,21 @@ function Terms() {
 								.
 							</p>
 							<p>
-								Pro is a monthly subscription for one workspace, sold through
-								Polar (polar.sh), which acts as our merchant of record: it takes
-								the payment, charges any sales tax or VAT, and issues your
-								invoices. Polar's own terms also apply to the purchase. The
+								Pro is a monthly or yearly subscription for one workspace, sold
+								through Polar (polar.sh), which acts as our merchant of record:
+								it takes the payment, charges any sales tax or VAT, and issues
+								your invoices. Polar's own terms also apply to the purchase. The
 								price and billing period are shown before you pay.
 							</p>
 							<p>
-								Your subscription renews every month until you cancel it. You
-								can cancel any time from Settings, Billing, and Pro stays on
-								until the end of the month you've paid for; we don't refund
-								partial months. If a payment fails, Pro stays on while Polar
-								retries it, and the workspace moves back to the Free plan if it
-								can't be collected. If Pro isn't for you, write to us within 14
-								days of your first payment and we'll refund that payment in
-								full.
+								Your subscription renews every month or year, as you chose,
+								until you cancel it. You can cancel any time from Settings,
+								Billing, and Pro stays on until the end of the period you've
+								paid for; we don't refund partial periods. If a payment fails,
+								Pro stays on while Polar retries it, and the workspace moves
+								back to the Free plan if it can't be collected. If Pro isn't for
+								you, write to us within 14 days of your first payment and we'll
+								refund that payment in full.
 							</p>
 							<p>
 								A founding price may be offered to a limited number of early

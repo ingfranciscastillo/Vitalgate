@@ -184,6 +184,24 @@ export async function revokeOrgSubscription(organizationId: string) {
 
 /** Pro's list price in US dollars, as on /pricing. */
 export const PRO_PRICE_USD = 29;
+/** Pro billed yearly: two months free. Offered when POLAR_PRO_YEARLY_PRODUCT_ID is set. */
+export const PRO_YEARLY_PRICE_USD = 290;
+
+export type BillingInterval = "month" | "year";
+
+/** Whether the yearly Pro product is set up on this server. */
+export function isYearlyAvailable(): boolean {
+	return (
+		isBillingConfigured() && Boolean(process.env.POLAR_PRO_YEARLY_PRODUCT_ID)
+	);
+}
+
+/** Which billing interval a Pro product id is. */
+export function intervalOf(productId: string): BillingInterval {
+	return productId === process.env.POLAR_PRO_YEARLY_PRODUCT_ID
+		? "year"
+		: "month";
+}
 
 export interface FounderOffer {
 	discountId: string;
@@ -250,6 +268,14 @@ export function polarPlugins() {
 				checkout({
 					products: [
 						{ productId: process.env.POLAR_PRO_PRODUCT_ID ?? "", slug: "pro" },
+						...(process.env.POLAR_PRO_YEARLY_PRODUCT_ID
+							? [
+									{
+										productId: process.env.POLAR_PRO_YEARLY_PRODUCT_ID,
+										slug: "pro-yearly",
+									},
+								]
+							: []),
 					],
 					successUrl: `${billingTab}&checkout=success`,
 					returnUrl: billingTab,

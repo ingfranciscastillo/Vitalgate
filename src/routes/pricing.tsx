@@ -1,16 +1,17 @@
 import { CheckCircleIcon } from "@phosphor-icons/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { motion, useReducedMotion } from "motion/react";
+import { useState } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
 import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getPublicFounderOffer } from "@/lib/billing.functions";
+import { getPublicPricing } from "@/lib/billing.functions";
 import { staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/pricing")({
-	loader: () => getPublicFounderOffer(),
+	loader: () => getPublicPricing(),
 	head: () => ({
 		meta: [
 			{ title: "Pricing: Vitalgate" },
@@ -66,7 +67,9 @@ const plans = [
 
 function Pricing() {
 	const reduce = useReducedMotion();
-	const founder = Route.useLoaderData();
+	const { founder, yearly } = Route.useLoaderData();
+	const [period, setPeriod] = useState<"month" | "year">("month");
+	const showYearly = yearly && period === "year";
 
 	return (
 		<MarketingShell>
@@ -85,6 +88,33 @@ function Pricing() {
 				</section>
 			</Reveal>
 			<section className="mx-auto max-w-3xl px-5 pb-24">
+				{yearly && (
+					<fieldset className="mb-6 flex justify-center">
+						<legend className="sr-only">Billing period</legend>
+						<div className="inline-flex rounded-full border border-border p-1 text-sm">
+							{(
+								[
+									["month", "Monthly"],
+									["year", "Yearly, 2 months free"],
+								] as const
+							).map(([id, label]) => (
+								<button
+									key={id}
+									type="button"
+									aria-pressed={period === id}
+									onClick={() => setPeriod(id)}
+									className={`rounded-full px-4 py-1.5 transition-colors ${
+										period === id
+											? "bg-foreground text-background"
+											: "text-muted-foreground hover:text-foreground"
+									}`}
+								>
+									{label}
+								</button>
+							))}
+						</div>
+					</fieldset>
+				)}
 				<div className="grid sm:grid-cols-2 gap-4">
 					{plans.map((p, i) => (
 						<Reveal key={p.name} delay={i * 0.08} className="h-full">
@@ -101,7 +131,19 @@ function Pricing() {
 										)}
 									</div>
 									<div className="mt-3 flex items-baseline gap-1">
-										{p.popular && founder ? (
+										{p.popular && showYearly ? (
+											<>
+												<span className="font-mono text-4xl font-semibold">
+													$290
+												</span>
+												<span className="text-sm text-muted-foreground">
+													/yr
+												</span>
+												<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
+													$348
+												</span>
+											</>
+										) : p.popular && founder ? (
 											<>
 												<span className="font-mono text-4xl font-semibold">
 													${founder.price}
@@ -124,7 +166,7 @@ function Pricing() {
 											</>
 										)}
 									</div>
-									{p.popular && founder && (
+									{p.popular && founder && !showYearly && (
 										<p className="mt-2 text-xs font-medium text-brand">
 											Founding price for the first {founder.total} subscribers,
 											kept for as long as you stay subscribed.{" "}
