@@ -92,6 +92,12 @@ export function MarketingShell({ children }: { children: ReactNode }) {
 									Compare
 								</Link>
 								<Link
+									to="/open-source"
+									className={`${linkUnderline} text-foreground/80`}
+								>
+									Open source
+								</Link>
+								<Link
 									to="/login"
 									className={`${linkUnderline} text-foreground/80`}
 								>

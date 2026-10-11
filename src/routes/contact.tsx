@@ -16,7 +16,22 @@ import {
 } from "@/lib/contact-schema";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
+/** Prefilled messages for links that open the form for a specific reason. */
+const TOPICS = {
+	"open-source": `I'd like free Pro for an open-source project.
+
+Repository:
+Live site / preview host (Vercel, Netlify…):
+`,
+} as const;
+
 export const Route = createFileRoute("/contact")({
+	validateSearch: (search): { topic?: keyof typeof TOPICS } => ({
+		topic:
+			typeof search.topic === "string" && search.topic in TOPICS
+				? (search.topic as keyof typeof TOPICS)
+				: undefined,
+	}),
 	head: () => ({
 		meta: [
 			{ title: "Contact: Vitalgate" },
@@ -43,8 +58,9 @@ const EMPTY_FORM: ContactValues = {
 };
 
 function Contact() {
+	const { topic } = Route.useSearch();
 	const form = useForm({
-		defaultValues: EMPTY_FORM,
+		defaultValues: { ...EMPTY_FORM, message: topic ? TOPICS[topic] : "" },
 		// The same schema the server validates against, re-run on every change
 		// (and on submit). Deliberately not an onSubmit validator: its errors
 		// are only recomputed by the next submit, which they themselves block
