@@ -527,40 +527,49 @@ function PricingPreview() {
 						Simple plans that scale with your repos.
 					</h2>
 				</Reveal>
-				<div className="mt-12 grid gap-4 sm:grid-cols-2 max-w-2xl mx-auto">
+				{/* From sm up the cards share three subgrid rows (header, button,
+				    features), so a taller Pro header pushes Free's to the same
+				    height and both buttons and lists line up. */}
+				<div className="mx-auto mt-12 grid max-w-2xl gap-4 sm:grid-cols-2 sm:gap-y-0">
 					{plans.map((p, i) => (
-						<Reveal key={p.name} delay={i * 0.06} className="h-full">
+						<Reveal
+							key={p.name}
+							delay={i * 0.06}
+							className="sm:row-span-3 sm:grid sm:grid-rows-subgrid"
+						>
 							<Card
-								className={`h-full rounded-md p-7 transition-colors duration-200 ${
+								className={`rounded-md p-7 transition-colors duration-200 gap-0 sm:row-span-3 sm:grid sm:grid-rows-subgrid ${
 									p.popular ? "border-brand" : "hover:border-foreground/30"
 								}`}
 							>
-								<div className="flex items-center justify-between">
-									<h3 className="font-bold">{p.name}</h3>
-									{p.popular && (
-										<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-											Recommended
+								<div>
+									<div className="flex items-center justify-between">
+										<h3 className="font-bold">{p.name}</h3>
+										{p.popular && (
+											<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
+												Recommended
+											</span>
+										)}
+									</div>
+									<div className="mt-3 flex items-baseline gap-1">
+										<span className="font-mono text-4xl font-semibold">
+											{p.popular && founder ? `$${founder.price}` : p.price}
 										</span>
-									)}
-								</div>
-								<div className="mt-3 flex items-baseline gap-1">
-									<span className="font-mono text-4xl font-semibold">
-										{p.popular && founder ? `$${founder.price}` : p.price}
-									</span>
-									<span className="text-sm text-muted-foreground">/mo</span>
+										<span className="text-sm text-muted-foreground">/mo</span>
+										{p.popular && founder && (
+											<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
+												{p.price}
+											</span>
+										)}
+									</div>
 									{p.popular && founder && (
-										<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
-											{p.price}
-										</span>
+										<p className="mt-2 text-xs font-medium text-brand">
+											Founding price, kept while you stay subscribed.{" "}
+											{founder.remaining} of {founder.total} left.
+										</p>
 									)}
+									<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								</div>
-								{p.popular && founder && (
-									<p className="mt-2 text-xs font-medium text-brand">
-										Founding price, kept while you stay subscribed.{" "}
-										{founder.remaining} of {founder.total} left.
-									</p>
-								)}
-								<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								<Link to="/login" className="mt-5 block">
 									<Button
 										className={`w-full ${p.popular ? "bg-brand text-brand-foreground hover:bg-brand/90" : ""}`}

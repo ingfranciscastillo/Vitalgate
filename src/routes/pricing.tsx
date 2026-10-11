@@ -116,13 +116,19 @@ function Pricing() {
 						</div>
 					</fieldset>
 				)}
-				<div className="grid sm:grid-cols-2 gap-4">
+				{/* Shared subgrid rows from sm up: headers, buttons and feature
+				    lists line up across both cards. */}
+				<div className="grid gap-4 sm:grid-cols-2 sm:gap-y-0">
 					{plans.map((p, i) => (
-						<Reveal key={p.name} delay={i * 0.08} className="h-full">
+						<Reveal
+							key={p.name}
+							delay={i * 0.08}
+							className="sm:row-span-3 sm:grid sm:grid-rows-subgrid"
+						>
 							<Card
-								className={`flex h-full flex-col p-7 transition-colors duration-200 ${p.popular ? "border-brand" : "hover:border-foreground/30"}`}
+								className={`p-7 transition-colors duration-200 gap-0 sm:row-span-3 sm:grid sm:grid-rows-subgrid ${p.popular ? "border-brand" : "hover:border-foreground/30"}`}
 							>
-								<div className="flex-1">
+								<div>
 									<div className="flex items-center justify-between">
 										<h2 className="font-bold">{p.name}</h2>
 										{p.popular && (
