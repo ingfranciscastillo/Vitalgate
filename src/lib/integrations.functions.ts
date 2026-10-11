@@ -3,6 +3,8 @@ import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "@/db";
 import { account, githubInstallations, integrations, repos } from "@/db/schema";
+import { googleChatPayload, teamsPayload } from "@/lib/alert-messages";
+import { getAppUrl } from "@/lib/app-url.server";
 import { ensureSession } from "@/lib/auth.functions";
 import { decryptSecret, encryptSecret } from "@/lib/crypto.server";
 import { getInstallUrl, isGithubAppConfigured } from "@/lib/github-app.server";
@@ -11,6 +13,7 @@ import {
 	getDiscordAuthorizeUrl,
 	getSlackAuthorizeUrl,
 } from "@/lib/integrations.server";
+import type { PastedChatProvider } from "@/lib/mock-data";
 import { signOAuthState } from "@/lib/oauth-state.server";
 import { requireOrgAdmin } from "@/lib/org-access.server";
 import {
@@ -25,6 +28,7 @@ import {
 	integrationProviderSchema,
 	oauthIntegrationProviderSchema,
 	parseInput,
+	pastedChatProviderSchema,
 } from "@/lib/validation";
 
 export interface IntegrationsOverview {
@@ -38,6 +42,8 @@ export interface IntegrationsOverview {
 	};
 	slack: { connected: boolean; label: string | null };
 	discord: { connected: boolean; label: string | null };
+	teams: { connected: boolean; label: string | null };
+	googleChat: { connected: boolean; label: string | null };
 	webhook: { connected: boolean; label: string | null };
 	/** Slack/Discord are Pro-only; the client uses this to show an upgrade prompt instead of a Connect button. */
 	plan: Plan;
@@ -106,6 +112,14 @@ export const getIntegrationsOverview = createServerFn({
 		discord: {
 			connected: byProvider.has("discord"),
 			label: byProvider.get("discord") ?? null,
+		},
+		teams: {
+			connected: byProvider.has("teams"),
+			label: byProvider.get("teams") ?? null,
+		},
+		googleChat: {
+			connected: byProvider.has("google_chat"),
+			label: byProvider.get("google_chat") ?? null,
 		},
 		webhook: {
 			connected: byProvider.has("webhook"),
@@ -232,3 +246,117 @@ export const sendTestWebhook = createServerFn({ method: "POST" }).handler(
 		}
 	},
 );
+
+/**
+ * Where each pasted chat webhook may point: Teams Workflows URLs (Power
+ * Automate / Logic Apps) and Google Chat space webhooks. Anything else is
+ * refused, so this can't be used to make Vitalgate call arbitrary hosts.
+ */
+function checkChatWebhookUrl(
+	provider: PastedChatProvider,
+	input: string,
+): { url: URL; label: string } | string {
+	let url: URL;
+	try {
+		url = new URL(input.trim());
+	} catch {
+		return "Paste the full URL you copied";
+	}
+	if (url.protocol !== "https:") return "The URL must start with https://";
+	const host = url.hostname.toLowerCase();
+	if (provider === "teams") {
+		const ok = [
+			".logic.azure.com",
+			".powerplatform.com",
+			".webhook.office.com",
+		].some((suffix) => host.endsWith(suffix));
+		if (!ok) {
+			return 'That isn\'t a Teams Workflows URL. Copy it from the "When a Teams webhook request is received" step.';
+		}
+		return { url, label: "Microsoft Teams channel" };
+	}
+	const space = url.pathname.match(/^\/v1\/spaces\/([^/]+)\/messages$/)?.[1];
+	if (host !== "chat.googleapis.com" || !space) {
+		return "That isn't a Google Chat webhook URL. Copy it from the space's Apps & integrations, Webhooks.";
+	}
+	return { url, label: "Google Chat space" };
+}
+
+/** Connects (or replaces) a Teams or Google Chat channel by its incoming-webhook URL. Pro only. */
+export const connectChatWebhook = createServerFn({ method: "POST" })
+	.validator(
+		parseInput(
+			z.object({
+				provider: pastedChatProviderSchema,
+				url: z.string().trim().max(4096),
+			}),
+		),
+	)
+	.handler(async ({ data }) => {
+		const { organizationId } = await requireOrgAdmin();
+		if (!isPro(await getOrgPlan(organizationId))) {
+			throw new Error("Chat alerts are a Pro feature. Upgrade to connect.");
+		}
+		const checked = checkChatWebhookUrl(data.provider, data.url);
+		if (typeof checked === "string") throw new Error(checked);
+		const values = {
+			label: checked.label,
+			encryptedWebhookUrl: encryptSecret(checked.url.toString()),
+		};
+		await db
+			.insert(integrations)
+			.values({ organizationId, provider: data.provider, ...values })
+			.onConflictDoUpdate({
+				target: [integrations.organizationId, integrations.provider],
+				set: values,
+			});
+	});
+
+/** Posts a test message to the connected Teams or Google Chat channel. */
+export const sendTestChatMessage = createServerFn({ method: "POST" })
+	.validator(parseInput(pastedChatProviderSchema))
+	.handler(async ({ data: provider }): Promise<{ status: number }> => {
+		const { organizationId } = await requireOrgAdmin();
+		const [row] = await db
+			.select({ encryptedWebhookUrl: integrations.encryptedWebhookUrl })
+			.from(integrations)
+			.where(
+				and(
+					eq(integrations.organizationId, organizationId),
+					eq(integrations.provider, provider),
+				),
+			)
+			.limit(1);
+		if (!row) throw new Error("Not connected");
+		const alerts = [
+			{
+				level: "warning" as const,
+				title: "Test alert",
+				message:
+					"Vitalgate is connected. Budget alerts for this workspace will show up here.",
+			},
+		];
+		const ctx = {
+			organizationId,
+			repoFullName: "vitalgate/test",
+			prNumber: 1,
+			prTitle: "Test message",
+			prAuthor: "vitalgate",
+			pullId: "test",
+		};
+		const links = {
+			pr: `${getAppUrl()}/settings`,
+			app: `${getAppUrl()}/settings`,
+		};
+		const res = await fetch(decryptSecret(row.encryptedWebhookUrl), {
+			method: "POST",
+			headers: { "content-type": "application/json" },
+			body: JSON.stringify(
+				provider === "teams"
+					? teamsPayload(alerts, ctx, links)
+					: googleChatPayload(alerts, ctx, links),
+			),
+			signal: AbortSignal.timeout(5000),
+		});
+		return { status: res.status };
+	});

@@ -31,8 +31,8 @@ export function RepoLimitDialog({
 					</div>
 					<Dialog.Description className="mt-2 text-sm text-muted-foreground">
 						Free includes {FREE_REPO_LIMIT} connected repository. Upgrade to Pro
-						for unlimited repositories, Slack, Discord and webhook alerts, and custom alert
-						rules.
+						for unlimited repositories, chat and webhook alerts, and custom
+						alert rules.
 					</Dialog.Description>
 
 					<div className="mt-5 space-y-2">

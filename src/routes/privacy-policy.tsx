@@ -207,8 +207,9 @@ function PrivacyPolicy() {
 									the subscription's status and renewal date.
 								</li>
 								<li>
-									<strong>Slack / Discord</strong> — only if you connect them,
-									to receive the alerts posted to your channel.
+									<strong>Slack, Discord, Microsoft Teams, Google Chat</strong>{" "}
+									— only if you connect them, to receive the alerts posted to
+									your channel.
 								</li>
 								<li>
 									<strong>Your webhook endpoint</strong> — only if you connect
@@ -258,13 +259,12 @@ function PrivacyPolicy() {
 						<section>
 							<h2>8. Security</h2>
 							<p>
-								Traffic to the site is encrypted with HTTPS. Slack, Discord and
-								webhook URLs, webhook signing secrets and GitHub sign-in tokens
-								are encrypted at rest.
-								Every request for workspace data is checked against your active
-								workspace, so one workspace can't read another's data. No system
-								is perfectly secure; if a breach affects your personal data,
-								we'll tell you without undue delay.
+								Traffic to the site is encrypted with HTTPS. Chat and webhook
+								URLs, webhook signing secrets and GitHub sign-in tokens are
+								encrypted at rest. Every request for workspace data is checked
+								against your active workspace, so one workspace can't read
+								another's data. No system is perfectly secure; if a breach
+								affects your personal data, we'll tell you without undue delay.
 							</p>
 						</section>
 

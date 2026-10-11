@@ -12,6 +12,8 @@ const CHANNEL_LABEL = {
 	email: "Email",
 	slack: "Slack",
 	discord: "Discord",
+	teams: "Teams",
+	google_chat: "Google Chat",
 	webhook: "Webhook",
 };
 

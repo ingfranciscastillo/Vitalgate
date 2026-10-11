@@ -33,17 +33,20 @@ import { authClient } from "@/lib/auth-client";
 import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
 import {
+	connectChatWebhook,
 	connectWebhook,
 	disconnectIntegration,
 	getGithubInstallUrl,
 	getIntegrationAuthorizeUrl,
 	getWebhookSecret,
+	sendTestChatMessage,
 	sendTestWebhook,
 } from "@/lib/integrations.functions";
 import { integrationsOverviewQueryOptions } from "@/lib/integrations.queries";
 import type {
 	IntegrationProvider,
 	OAuthIntegrationProvider,
+	PastedChatProvider,
 } from "@/lib/mock-data";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { setNotificationPref } from "@/lib/notification-prefs.functions";
@@ -218,7 +221,7 @@ function IntegrationCardShell({
 	children: React.ReactNode;
 }) {
 	return (
-		<Card className="p-5">
+		<Card className="flex h-full flex-col p-5">
 			<div className="flex items-start gap-3">
 				<div className="h-9 w-9 rounded-md bg-muted grid place-items-center">
 					<Icon className="h-4 w-4" />
@@ -240,8 +243,159 @@ function IntegrationCardShell({
 					<p className="text-xs text-muted-foreground mt-1">{desc}</p>
 				</div>
 			</div>
-			<div className="mt-4">{children}</div>
+			<div className="mt-auto pt-4">{children}</div>
 		</Card>
+	);
+}
+
+const CHAT_PROVIDERS: Record<
+	PastedChatProvider,
+	{
+		name: string;
+		icon: ComponentType<{ className?: string }>;
+		placeholder: string;
+		howTo: string;
+	}
+> = {
+	teams: {
+		name: "Microsoft Teams",
+		icon: MicrosoftTeamsLogoIcon,
+		placeholder: "https://….logic.azure.com/workflows/…",
+		howTo:
+			'In the Teams channel: ⋯ → Workflows → "Post to a channel when a webhook request is received". Finish the steps and paste the URL it gives you.',
+	},
+	google_chat: {
+		name: "Google Chat",
+		icon: GoogleLogoIcon,
+		placeholder: "https://chat.googleapis.com/v1/spaces/…",
+		howTo:
+			"In the Google Chat space: space name → Apps & integrations → Webhooks → Add webhook, then paste its URL. Needs a Google Workspace account.",
+	},
+};
+
+/** Teams or Google Chat: connected by pasting the channel's incoming-webhook URL. Pro only. */
+function ChatWebhookCard({
+	provider,
+	connected,
+	pro,
+	isAdmin,
+}: {
+	provider: PastedChatProvider;
+	connected: boolean;
+	pro: boolean;
+	isAdmin: boolean;
+}) {
+	const meta = CHAT_PROVIDERS[provider];
+	const queryClient = useQueryClient();
+	const [url, setUrl] = useState("");
+	const [editing, setEditing] = useState(false);
+
+	const connect = useMutation({
+		mutationFn: connectChatWebhook,
+		onSuccess: () => {
+			setEditing(false);
+			setUrl("");
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success(`${meta.name} connected`);
+		},
+		onError: (err) =>
+			toast.error(err instanceof Error ? err.message : "Could not connect"),
+	});
+	const test = useMutation({
+		mutationFn: sendTestChatMessage,
+		onSuccess: ({ status }) =>
+			status >= 200 && status < 300
+				? toast.success(`Test message sent to ${meta.name}`)
+				: toast.error(`${meta.name} answered HTTP ${status}`),
+		onError: (err) =>
+			toast.error(err instanceof Error ? err.message : "Test failed"),
+	});
+	const disconnect = useMutation({
+		mutationFn: disconnectIntegration,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success(`${meta.name} disconnected`);
+		},
+		onError: () => toast.error("Could not disconnect"),
+	});
+
+	return (
+		<IntegrationCardShell
+			icon={meta.icon}
+			name={meta.name}
+			connected={connected}
+			proLocked={!pro}
+			desc={
+				connected
+					? "Budget alerts are posted to your channel."
+					: pro
+						? meta.howTo
+						: `Upgrade to Pro to connect ${meta.name}`
+			}
+		>
+			{!pro ? (
+				<Link to="/settings" search={{ tab: "billing" }}>
+					<Button variant="outline" size="sm">
+						Upgrade to Pro
+					</Button>
+				</Link>
+			) : !connected || editing ? (
+				<form
+					className="flex flex-col gap-2 sm:flex-row"
+					onSubmit={(e) => {
+						e.preventDefault();
+						connect.mutate({ data: { provider, url } });
+					}}
+				>
+					<Input
+						type="url"
+						inputMode="url"
+						placeholder={meta.placeholder}
+						aria-label={`${meta.name} webhook URL`}
+						value={url}
+						onChange={(e) => setUrl(e.target.value)}
+						className="font-mono text-xs"
+					/>
+					<Button
+						type="submit"
+						size="sm"
+						loading={connect.isPending}
+						disabled={!url.trim() || !isAdmin}
+					>
+						{connect.isPending ? "Connecting…" : "Connect"}
+					</Button>
+				</form>
+			) : (
+				<div className="flex flex-wrap gap-2">
+					<Button
+						size="sm"
+						variant="outline"
+						loading={test.isPending}
+						disabled={!isAdmin}
+						onClick={() => test.mutate({ data: provider })}
+					>
+						{test.isPending ? "Sending…" : "Send test message"}
+					</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						disabled={!isAdmin}
+						onClick={() => setEditing(true)}
+					>
+						Change URL
+					</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						loading={disconnect.isPending}
+						disabled={!isAdmin}
+						onClick={() => disconnect.mutate({ data: provider })}
+					>
+						Disconnect
+					</Button>
+				</div>
+			)}
+		</IntegrationCardShell>
 	);
 }
 
@@ -534,7 +688,7 @@ function IntegrationsTab() {
 				initial="hidden"
 				animate="show"
 			>
-				<motion.div variants={staggerItem(reduce)}>
+				<motion.div variants={staggerItem(reduce)} className="h-full">
 					<IntegrationCardShell
 						icon={GithubLogoIcon}
 						name="GitHub"
@@ -572,7 +726,7 @@ function IntegrationsTab() {
 					</IntegrationCardShell>
 				</motion.div>
 
-				<motion.div variants={staggerItem(reduce)}>
+				<motion.div variants={staggerItem(reduce)} className="h-full">
 					<IntegrationCardShell
 						icon={SlackLogoIcon}
 						name="Slack"
@@ -614,7 +768,7 @@ function IntegrationsTab() {
 					</IntegrationCardShell>
 				</motion.div>
 
-				<motion.div variants={staggerItem(reduce)}>
+				<motion.div variants={staggerItem(reduce)} className="h-full">
 					<IntegrationCardShell
 						icon={DiscordLogoIcon}
 						name="Discord"
@@ -656,7 +810,25 @@ function IntegrationsTab() {
 					</IntegrationCardShell>
 				</motion.div>
 
-				<motion.div variants={staggerItem(reduce)}>
+				<motion.div variants={staggerItem(reduce)} className="h-full">
+					<ChatWebhookCard
+						provider="teams"
+						connected={data.teams.connected}
+						pro={isPro(data.plan)}
+						isAdmin={isAdmin === true}
+					/>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)} className="h-full">
+					<ChatWebhookCard
+						provider="google_chat"
+						connected={data.googleChat.connected}
+						pro={isPro(data.plan)}
+						isAdmin={isAdmin === true}
+					/>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)} className="h-full">
 					<WebhookCard
 						connected={data.webhook.connected}
 						label={data.webhook.label}
@@ -695,16 +867,6 @@ const UPCOMING_INTEGRATIONS: {
 	name: string;
 	desc: string;
 }[] = [
-	{
-		icon: MicrosoftTeamsLogoIcon,
-		name: "Microsoft Teams",
-		desc: "Budget alerts in a Teams channel.",
-	},
-	{
-		icon: GoogleLogoIcon,
-		name: "Google Chat",
-		desc: "Budget alerts in a Google Chat space.",
-	},
 	{
 		icon: KanbanIcon,
 		name: "Linear",

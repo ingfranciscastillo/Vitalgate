@@ -18,7 +18,7 @@ export const Route = createFileRoute("/pricing")({
 			{
 				name: "description",
 				content:
-					"Free for one repository. $29/mo for unlimited repos, Slack, Discord and webhook alerts, and a weekly digest.",
+					"Free for one repository. $29/mo for unlimited repos, alerts in Slack, Discord, Teams, Google Chat or a webhook, and a weekly digest.",
 			},
 			{ property: "og:type", content: "website" },
 			{ property: "og:url", content: `${SITE_URL}/pricing` },
@@ -57,7 +57,7 @@ const plans = [
 		features: [
 			"Unlimited repositories",
 			"Everything in Free",
-			"Slack, Discord + webhook alert delivery",
+			"Alerts in Slack, Discord, Teams, Google Chat or a webhook",
 			"Custom alert rules (regressions, score thresholds)",
 			"Weekly performance digest email",
 			"Email support",

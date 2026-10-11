@@ -4,6 +4,7 @@ import type {
 	IntegrationProvider,
 	NotificationPrefKey,
 	OAuthIntegrationProvider,
+	PastedChatProvider,
 } from "@/lib/mock-data";
 
 /**
@@ -18,8 +19,15 @@ export const idSchema = z.string().min(1).max(64);
 export const integrationProviderSchema = z.enum([
 	"slack",
 	"discord",
+	"teams",
+	"google_chat",
 	"webhook",
 ]) satisfies z.ZodType<IntegrationProvider>;
+
+export const pastedChatProviderSchema = z.enum([
+	"teams",
+	"google_chat",
+]) satisfies z.ZodType<PastedChatProvider>;
 
 export const oauthIntegrationProviderSchema = z.enum([
 	"slack",

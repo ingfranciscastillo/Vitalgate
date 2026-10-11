@@ -4,8 +4,10 @@ import {
 	type AlertToDeliver,
 	discordPayload,
 	emailSubject,
+	googleChatPayload,
 	renderAlertEmail,
 	slackPayload,
+	teamsPayload,
 } from "@/lib/alert-messages";
 import { escapeHtml } from "@/lib/html";
 import { PR_COMMENT_MARKER, renderPrComment } from "@/lib/pr-comment";
@@ -155,5 +157,41 @@ describe("PR comment", () => {
 		});
 		expect(md).not.toContain("Interaction to Next Paint");
 		expect(md).not.toContain("Performance score");
+	});
+});
+
+describe("Teams and Google Chat payloads", () => {
+	const ctx = {
+		organizationId: "org",
+		repoFullName: "acme/web",
+		prNumber: 7,
+		prTitle: "[click](https://evil.example) <users/all>",
+		prAuthor: "mallory",
+		pullId: "p7",
+	};
+	const links = {
+		pr: "https://github.com/acme/web/pull/7",
+		app: "https://vg/pulls/p7",
+	};
+	const alerts = [
+		{
+			level: "critical" as const,
+			title: "LCP over budget",
+			message: "4.2s > 2.5s",
+		},
+	];
+
+	it("builds an Adaptive Card without letting the PR title fake a link", () => {
+		const card = teamsPayload(alerts, ctx, links).attachments[0];
+		expect(card.contentType).toBe("application/vnd.microsoft.card.adaptive");
+		const text = JSON.stringify(card.content.body);
+		expect(text).not.toContain("[click](");
+		expect(card.content.actions[0].url).toBe(links.app);
+	});
+
+	it("keeps Google Chat from reading the PR title as a mention", () => {
+		const { text } = googleChatPayload(alerts, ctx, links);
+		expect(text).not.toContain("<users/all>");
+		expect(text).toContain(`<${links.app}|View in Vitalgate>`);
 	});
 });

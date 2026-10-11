@@ -7,8 +7,10 @@ import {
 	type AlertToDeliver,
 	discordPayload,
 	emailSubject,
+	googleChatPayload,
 	renderAlertEmail,
 	slackPayload,
+	teamsPayload,
 } from "@/lib/alert-messages";
 import { getAppUrl } from "@/lib/app-url.server";
 import { decryptSecret } from "@/lib/crypto.server";
@@ -192,7 +194,11 @@ async function deliverWebhook(
 	const body =
 		integration.provider === "slack"
 			? slackPayload(alerts, ctx, links)
-			: discordPayload(alerts, ctx, links);
+			: integration.provider === "teams"
+				? teamsPayload(alerts, ctx, links)
+				: integration.provider === "google_chat"
+					? googleChatPayload(alerts, ctx, links)
+					: discordPayload(alerts, ctx, links);
 
 	const res = await fetch(url, {
 		method: "POST",
