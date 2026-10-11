@@ -231,6 +231,7 @@ export function BudgetsEditor({
 						</Button>
 					)}
 					<Button
+						loading={save.isPending}
 						size="sm"
 						disabled={!dirty || hasErrors || save.isPending}
 						onClick={onSave}

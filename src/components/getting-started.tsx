@@ -123,7 +123,12 @@ export function GettingStarted({
 			body: "Pick which repositories Vitalgate can access. You can change it any time.",
 			done: installed,
 			action: (
-				<Button size="sm" disabled={opening} onClick={installApp}>
+				<Button
+					loading={opening}
+					size="sm"
+					disabled={opening}
+					onClick={installApp}
+				>
 					{opening ? "Opening GitHub…" : "Install GitHub App"}
 				</Button>
 			),

@@ -556,6 +556,7 @@ function RepoDetail() {
 										/>
 									</div>
 									<Button
+										loading={saveProductionUrl.isPending}
 										type="submit"
 										size="sm"
 										disabled={
@@ -604,6 +605,7 @@ function RepoDetail() {
 										</p>
 									</div>
 									<Button
+										loading={regenerate.isPending}
 										size="sm"
 										variant="outline"
 										disabled={regenerate.isPending}
@@ -643,6 +645,7 @@ function RepoDetail() {
 									/>
 								</div>
 								<Button
+									loading={saveEnvVars.isPending}
 									className="mt-4"
 									size="sm"
 									disabled={saveEnvVars.isPending}
@@ -682,6 +685,7 @@ function RepoDetail() {
 										>
 											<span className="text-sm font-medium">Are you sure?</span>
 											<Button
+												loading={disconnect.isPending}
 												variant="destructive"
 												size="sm"
 												disabled={disconnect.isPending}

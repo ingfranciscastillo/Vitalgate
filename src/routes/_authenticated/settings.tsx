@@ -22,6 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
@@ -115,6 +116,7 @@ function OrganizationCard() {
 				</div>
 				<div className="pt-2">
 					<Button
+						loading={saving}
 						onClick={handleSave}
 						disabled={isPending || saving || !name.trim() || !slug.trim()}
 					>
@@ -147,7 +149,17 @@ function NotificationsCard() {
 				whether you're emailed about it.
 			</p>
 			{isPending ? (
-				<p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+				<ul className="mt-4 divide-y divide-border">
+					{[0, 1, 2, 3, 4].map((i) => (
+						<li key={i} className="flex items-center justify-between py-3">
+							<div className="space-y-1.5">
+								<Skeleton className="h-3.5 w-40" />
+								<Skeleton className="h-3 w-64" />
+							</div>
+							<Skeleton className="h-5 w-9 rounded-full" />
+						</li>
+					))}
+				</ul>
 			) : (
 				<motion.ul
 					className="mt-4 divide-y divide-border"
@@ -297,7 +309,22 @@ function IntegrationsTab() {
 	};
 
 	if (isPending || !data) {
-		return <p className="mt-6 text-sm text-muted-foreground">Loading…</p>;
+		return (
+			<div className="mt-6 grid max-w-3xl gap-4 sm:grid-cols-2">
+				{[0, 1, 2].map((i) => (
+					<Card key={i} className="p-5">
+						<div className="flex items-start gap-3">
+							<Skeleton className="size-9" />
+							<div className="flex-1 space-y-2">
+								<Skeleton className="h-4 w-24" />
+								<Skeleton className="h-3 w-full" />
+							</div>
+						</div>
+						<Skeleton className="mt-4 h-8 w-28" />
+					</Card>
+				))}
+			</div>
+		);
 	}
 
 	return (
@@ -328,6 +355,7 @@ function IntegrationsTab() {
 						<div className="flex flex-wrap gap-2">
 							{data.github.appConfigured && (
 								<Button
+									loading={connecting === "github"}
 									size="sm"
 									variant={
 										data.github.installations.length > 0 ? "outline" : "default"
@@ -376,6 +404,7 @@ function IntegrationsTab() {
 							</Button>
 						) : isPro(data.plan) ? (
 							<Button
+								loading={connecting === "slack"}
 								size="sm"
 								disabled={connecting === "slack" || !isAdmin}
 								onClick={() => connect("slack")}
@@ -417,6 +446,7 @@ function IntegrationsTab() {
 							</Button>
 						) : isPro(data.plan) ? (
 							<Button
+								loading={connecting === "discord"}
 								size="sm"
 								disabled={connecting === "discord" || !isAdmin}
 								onClick={() => connect("discord")}
@@ -564,6 +594,7 @@ function SessionsCard() {
 							>
 								<span className="text-xs font-medium">Sure?</span>
 								<Button
+									loading={revokeOthers.isPending}
 									variant="destructive"
 									size="sm"
 									disabled={revokeOthers.isPending}
@@ -602,7 +633,17 @@ function SessionsCard() {
 			</div>
 
 			{isPending ? (
-				<p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+				<ul className="mt-4 divide-y divide-border">
+					{[0, 1].map((i) => (
+						<li key={i} className="flex items-center gap-3 py-3">
+							<Skeleton className="size-8" />
+							<div className="flex-1 space-y-1.5">
+								<Skeleton className="h-3.5 w-44" />
+								<Skeleton className="h-3 w-28" />
+							</div>
+						</li>
+					))}
+				</ul>
 			) : error ? (
 				<p className="mt-4 text-xs text-muted-foreground">
 					Couldn't load the list — that needs a recent sign-in. You can still
@@ -775,7 +816,11 @@ function BillingCard() {
 					Repositories connected
 				</div>
 				<div className="font-mono mt-1">
-					{isPending ? "…" : repoCount}
+					{isPending ? (
+						<Skeleton className="inline-block h-4 w-6 align-middle" />
+					) : (
+						repoCount
+					)}
 					{!pro && (
 						<span className="text-muted-foreground text-sm">
 							{" "}
@@ -794,6 +839,7 @@ function BillingCard() {
 			<div className="mt-6 flex flex-wrap items-center gap-3">
 				{!pro && billing?.configured && isAdmin && (
 					<Button
+						loading={redirecting === "checkout" || justPaid}
 						className="bg-brand text-brand-foreground hover:bg-brand/90"
 						disabled={redirecting !== null || justPaid}
 						onClick={() => upgrade("month")}
@@ -809,6 +855,7 @@ function BillingCard() {
 				)}
 				{!pro && billing?.yearly && isAdmin && !justPaid && (
 					<Button
+						loading={redirecting === "checkout-yearly"}
 						variant="outline"
 						disabled={redirecting !== null}
 						onClick={() => upgrade("year")}
@@ -820,6 +867,7 @@ function BillingCard() {
 				)}
 				{pro && sub?.managedByYou && (
 					<Button
+						loading={redirecting === "portal"}
 						variant="outline"
 						disabled={redirecting !== null}
 						onClick={manage}
@@ -914,7 +962,11 @@ function DeleteAccountCard() {
 					Delete account…
 				</Button>
 			) : isPending || !preview ? (
-				<p className="mt-4 text-sm text-muted-foreground">Loading…</p>
+				<div className="mt-4 space-y-2">
+					<Skeleton className="h-3.5 w-full" />
+					<Skeleton className="h-3.5 w-5/6" />
+					<Skeleton className="h-3.5 w-2/3" />
+				</div>
 			) : (
 				<form
 					className="mt-4 space-y-4"
@@ -969,6 +1021,7 @@ function DeleteAccountCard() {
 					</div>
 					<div className="flex gap-2">
 						<Button
+							loading={remove.isPending}
 							type="submit"
 							variant="destructive"
 							size="sm"

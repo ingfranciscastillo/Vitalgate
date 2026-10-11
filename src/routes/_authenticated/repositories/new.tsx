@@ -290,6 +290,7 @@ function ConnectRepo() {
 								repository once it's installed.
 							</p>
 							<Button
+								loading={openingGithub}
 								className="mt-4"
 								disabled={openingGithub}
 								onClick={installGithubApp}
@@ -717,7 +718,7 @@ function ConnectRepo() {
 							<Button
 								className="mt-5 w-full"
 								onClick={onConnect}
-								disabled={connectMutation.isPending}
+								loading={connectMutation.isPending}
 							>
 								{connectLabel}
 							</Button>
@@ -757,7 +758,7 @@ function ConnectRepo() {
 					<Link to="/repositories">
 						<Button variant="ghost">Cancel</Button>
 					</Link>
-					<Button onClick={onConnect} disabled={connectMutation.isPending}>
+					<Button onClick={onConnect} loading={connectMutation.isPending}>
 						{connectLabel}
 					</Button>
 				</div>

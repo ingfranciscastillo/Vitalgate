@@ -1,4 +1,4 @@
-import { CircleNotchIcon, WarningCircleIcon } from "@phosphor-icons/react";
+import { WarningCircleIcon } from "@phosphor-icons/react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import {
 	createFileRoute,
@@ -9,6 +9,7 @@ import {
 } from "@tanstack/react-router";
 import { useState } from "react";
 import { Logo } from "@/components/logo";
+import { LogoLoader } from "@/components/logo-loader";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { getSession } from "@/lib/auth.functions";
@@ -95,10 +96,12 @@ function AcceptInvitation() {
 				</Link>
 				<Card className="p-6">
 					{invitation.isPending ? (
-						<p className="flex items-center gap-2 text-sm text-muted-foreground">
-							<CircleNotchIcon className="h-4 w-4 animate-spin" />
-							Loading invitation…
-						</p>
+						<div className="grid place-items-center py-6">
+							<LogoLoader
+								className="size-10 text-foreground"
+								label="Loading invitation"
+							/>
+						</div>
 					) : invitation.isError ? (
 						<InvitationProblem
 							message={invitation.error.message}
@@ -129,10 +132,15 @@ function AcceptInvitation() {
 								</p>
 							)}
 							<div className="mt-6 flex gap-3">
-								<Button onClick={accept} disabled={busy !== null}>
+								<Button
+									loading={busy === "accept"}
+									onClick={accept}
+									disabled={busy !== null}
+								>
 									{busy === "accept" ? "Joining…" : "Accept invitation"}
 								</Button>
 								<Button
+									loading={busy === "reject"}
 									variant="ghost"
 									onClick={reject}
 									disabled={busy !== null}

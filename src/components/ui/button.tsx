@@ -2,6 +2,7 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import { Slot } from "radix-ui";
 import type * as React from "react";
+import { LogoLoader } from "@/components/logo-loader";
 
 const buttonVariants = cva(
 	"group inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap outline-none transition-[color,background-color,border-color,transform] duration-100 ease-out active:scale-[0.97] motion-reduce:transition-none motion-reduce:active:scale-100 focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:pointer-events-none disabled:opacity-50 disabled:active:scale-100 aria-invalid:border-destructive aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
@@ -42,10 +43,15 @@ function Button({
 	variant = "default",
 	size = "default",
 	asChild = false,
+	loading = false,
+	disabled,
+	children,
 	...props
 }: React.ComponentProps<"button"> &
 	VariantProps<typeof buttonVariants> & {
 		asChild?: boolean;
+		/** Shows the Vitalgate loader before the label and disables the button. */
+		loading?: boolean;
 	}) {
 	const Comp = asChild ? Slot.Root : "button";
 
@@ -55,8 +61,19 @@ function Button({
 			data-variant={variant}
 			data-size={size}
 			className={cn(buttonVariants({ variant, size, className }))}
+			disabled={disabled || loading}
+			aria-busy={loading || undefined}
 			{...props}
-		/>
+		>
+			{loading && !asChild ? (
+				<>
+					<LogoLoader decorative mono className="size-4" />
+					{children}
+				</>
+			) : (
+				children
+			)}
+		</Comp>
 	);
 }
 

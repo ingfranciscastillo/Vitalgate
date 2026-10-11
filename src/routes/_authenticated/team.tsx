@@ -8,6 +8,7 @@ import { Reveal } from "@/components/reveal";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import { EASE_IN, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
@@ -102,9 +103,18 @@ function Team() {
 							</h2>
 						</div>
 						{isPending ? (
-							<p className="text-sm text-muted-foreground py-6 text-center">
-								Loading…
-							</p>
+							<ul className="divide-y divide-border">
+								{[0, 1, 2].map((i) => (
+									<li key={i} className="flex items-center gap-3 px-5 py-3">
+										<Skeleton className="size-9 rounded-full" />
+										<div className="flex-1 space-y-1.5">
+											<Skeleton className="h-3.5 w-36" />
+											<Skeleton className="h-3 w-52" />
+										</div>
+										<Skeleton className="h-6 w-20" />
+									</li>
+								))}
+							</ul>
 						) : (
 							<motion.ul
 								className="divide-y divide-border"
@@ -262,6 +272,7 @@ function Team() {
 									))}
 								</select>
 								<Button
+									loading={inviting}
 									className="w-full"
 									disabled={inviting}
 									onClick={handleInvite}

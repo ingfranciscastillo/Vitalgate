@@ -18,6 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import { CRUX_THRESHOLDS } from "@/lib/crux";
 import type { CruxCheckDevice } from "@/lib/crux-checker";
 import {
@@ -125,6 +126,7 @@ function CoreWebVitalsChecker() {
 							/>
 						</div>
 						<Button
+							loading={check.isFetching}
 							type="submit"
 							size="lg"
 							className="h-11 bg-brand text-brand-foreground hover:bg-brand/90"
@@ -165,13 +167,10 @@ function CoreWebVitalsChecker() {
 					<div className="mt-10" aria-live="polite">
 						{check.isPending ? (
 							<Card className="p-5">
-								<div className="h-5 w-48 animate-pulse rounded bg-muted" />
+								<Skeleton className="h-5 w-48" />
 								<div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
 									{CRUX_TILES.map((t) => (
-										<div
-											key={t.metric}
-											className="h-20 animate-pulse rounded-md bg-muted"
-										/>
+										<Skeleton key={t.metric} className="h-20" />
 									))}
 								</div>
 							</Card>

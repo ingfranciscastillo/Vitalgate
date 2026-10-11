@@ -23,6 +23,7 @@ import {
 import { Dialog, DropdownMenu } from "radix-ui";
 import { type ComponentType, type ReactNode, useState } from "react";
 import toast from "react-hot-toast";
+import { Skeleton } from "@/components/ui/skeleton";
 import { authClient } from "@/lib/auth-client";
 import { isPro } from "@/lib/plan";
 import { CreateWorkspaceDialog } from "./create-workspace-dialog";
@@ -130,7 +131,13 @@ function WorkspaceSwitcher() {
 						{initial}
 					</span>
 					<span className="truncate">
-						{isPending ? "Loading…" : switching ? "Switching…" : name}
+						{isPending ? (
+							<Skeleton className="h-3.5 w-24" />
+						) : switching ? (
+							"Switching…"
+						) : (
+							name
+						)}
 					</span>
 					<CaretDownIcon className="ml-auto size-3.5 shrink-0" weight="bold" />
 				</button>

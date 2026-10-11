@@ -5,6 +5,7 @@ import {
 	formatCruxDay,
 } from "@/components/crux-metrics-view";
 import { Card } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import { realUserMetricsQueryOptions } from "@/lib/crux.queries";
 
 /**
@@ -37,10 +38,7 @@ export function RealUserMetrics({
 				{header("Loading the Chrome UX Report…")}
 				<div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
 					{CRUX_TILES.map((t) => (
-						<div
-							key={t.metric}
-							className="h-20 animate-pulse rounded-md bg-muted"
-						/>
+						<Skeleton key={t.metric} className="h-20" />
 					))}
 				</div>
 			</Card>

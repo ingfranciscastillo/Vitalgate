@@ -178,6 +178,7 @@ function Contact() {
 							<form.Subscribe selector={(state) => state.isSubmitting}>
 								{(isSubmitting) => (
 									<Button
+										loading={isSubmitting}
 										type="submit"
 										className="justify-self-start"
 										disabled={isSubmitting}

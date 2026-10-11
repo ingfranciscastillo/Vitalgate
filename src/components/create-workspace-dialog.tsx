@@ -90,7 +90,11 @@ export function CreateWorkspaceDialog({
 									Cancel
 								</Button>
 							</Dialog.Close>
-							<Button type="submit" disabled={creating || !name.trim()}>
+							<Button
+								loading={creating}
+								type="submit"
+								disabled={creating || !name.trim()}
+							>
 								{creating ? "Creating…" : "Create workspace"}
 							</Button>
 						</div>

@@ -1,7 +1,6 @@
 import {
 	ArrowLeftIcon,
 	CheckCircleIcon,
-	CircleNotchIcon,
 	GithubLogoIcon,
 	WarningCircleIcon,
 } from "@phosphor-icons/react";
@@ -155,17 +154,14 @@ function Login() {
 							<Button
 								className="mt-8 w-full bg-foreground text-background hover:bg-foreground/90"
 								size="lg"
-								disabled={status === "loading"}
+								loading={status === "loading"}
 								onClick={handleSignIn}
 							>
 								{status === "loading" ? (
-									<>
-										<CircleNotchIcon className="mr-2 h-4 w-4 animate-spin" />
-										Redirecting to GitHub...
-									</>
+									"Redirecting to GitHub…"
 								) : (
 									<>
-										<GithubLogoIcon className="mr-2 h-4 w-4" weight="fill" />
+										<GithubLogoIcon className="h-4 w-4" weight="fill" />
 										Continue with GitHub
 									</>
 								)}
