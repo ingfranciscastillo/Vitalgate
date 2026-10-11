@@ -127,7 +127,7 @@ function Pricing() {
 										<h2 className="font-bold">{p.name}</h2>
 										{p.popular && (
 											<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-												Most popular
+												Recommended
 											</span>
 										)}
 									</div>

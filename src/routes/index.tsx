@@ -8,6 +8,7 @@ import {
 	LightningIcon,
 	ShieldCheckIcon,
 	StackIcon,
+	XCircleIcon,
 } from "@phosphor-icons/react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { animate, motion, useInView, useReducedMotion } from "motion/react";
@@ -24,10 +25,13 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
+import { getPublicPricing } from "@/lib/billing.functions";
+import { CWV_SNAPSHOT } from "@/lib/cwv-snapshot";
 import { EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
 export const Route = createFileRoute("/")({
+	loader: () => getPublicPricing(),
 	head: () => ({
 		meta: [
 			{ title: "Vitalgate: Performance Budgets for every Pull Request" },
@@ -77,10 +81,12 @@ function Landing() {
 	return (
 		<MarketingShell>
 			<Hero />
+			<ProofStrip />
 			<Flow />
 			<Features />
 			<DashboardPreview />
 			<PricingPreview />
+			<FounderNote />
 			<Faq />
 			<FinalCta />
 		</MarketingShell>
@@ -123,17 +129,75 @@ function Hero() {
 								<ArrowRightIcon className="ml-1 h-4 w-4 transition-transform duration-150 ease-out group-hover:translate-x-1" />
 							</Button>
 						</Link>
-						<a href="/#how">
+						<Link to="/tools/core-web-vitals">
 							<Button size="lg" variant="outline">
-								See how it works
+								Check your site's Core Web Vitals
 							</Button>
-						</a>
+						</Link>
 					</motion.div>
+					<motion.p
+						variants={item}
+						className="mt-4 text-xs text-muted-foreground"
+					>
+						Free for one repository · No credit card · 14-day refund on Pro
+					</motion.p>
 				</motion.div>
 
 				<Reveal delay={0.1}>
 					<PrFlowDemo />
 				</Reveal>
+			</div>
+		</section>
+	);
+}
+
+/**
+ * Real field data, not testimonials: how popular developer tools do on
+ * Core Web Vitals, with a way to check your own site.
+ */
+function ProofStrip() {
+	const failed = CWV_SNAPSHOT.sites.filter((s) => !s.passed).length;
+	return (
+		<section className="border-b border-border bg-muted/30">
+			<div className="mx-auto flex max-w-6xl flex-col gap-4 px-5 py-8 lg:flex-row lg:items-center lg:gap-10">
+				<div className="lg:max-w-xs">
+					<p className="text-lg font-bold tracking-tight">
+						{failed} of {CWV_SNAPSHOT.sites.length} developer tools fail Core
+						Web Vitals.
+					</p>
+					<p className="mt-1 text-xs text-muted-foreground">
+						Real Chrome users, 75th percentile, {CWV_SNAPSHOT.period}. Source:
+						Chrome UX Report.
+					</p>
+				</div>
+				<ul className="flex flex-1 flex-wrap gap-x-5 gap-y-2 text-sm">
+					{CWV_SNAPSHOT.sites.map((site) => (
+						<li key={site.name} className="flex items-center gap-1.5">
+							{site.passed ? (
+								<CheckCircleIcon
+									className="size-4 text-success"
+									weight="fill"
+									aria-label="Passes"
+								/>
+							) : (
+								<XCircleIcon
+									className="size-4 text-destructive"
+									weight="fill"
+									aria-label="Fails"
+								/>
+							)}
+							<span className={site.passed ? "" : "text-muted-foreground"}>
+								{site.name}
+							</span>
+						</li>
+					))}
+				</ul>
+				<Link
+					to="/tools/core-web-vitals"
+					className="text-sm font-medium text-primary hover:underline"
+				>
+					Check your site
+				</Link>
 			</div>
 		</section>
 	);
@@ -363,7 +427,7 @@ function DashboardPreview() {
 							"Workspace-wide performance score, updated on every PR",
 							"Per-repo health score and failing-budget count",
 							"Every PR checked against your budgets, pass or fail",
-							"Alerts to email, Slack, or Discord when something breaks",
+							"Alerts to email, Slack, Discord, Teams or Google Chat when something breaks",
 						].map((t) => (
 							<li key={t} className="flex items-center gap-2">
 								<CheckCircleIcon className="h-4 w-4 text-primary" /> {t}
@@ -426,6 +490,7 @@ function DashboardPreview() {
 }
 
 function PricingPreview() {
+	const { founder } = Route.useLoaderData();
 	const plans = [
 		{
 			name: "Free",
@@ -474,16 +539,27 @@ function PricingPreview() {
 									<h3 className="font-bold">{p.name}</h3>
 									{p.popular && (
 										<span className="border border-brand px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-brand">
-											Most popular
+											Recommended
 										</span>
 									)}
 								</div>
 								<div className="mt-3 flex items-baseline gap-1">
 									<span className="font-mono text-4xl font-semibold">
-										{p.price}
+										{p.popular && founder ? `$${founder.price}` : p.price}
 									</span>
 									<span className="text-sm text-muted-foreground">/mo</span>
+									{p.popular && founder && (
+										<span className="ml-2 font-mono text-sm text-muted-foreground line-through">
+											{p.price}
+										</span>
+									)}
 								</div>
+								{p.popular && founder && (
+									<p className="mt-2 text-xs font-medium text-brand">
+										Founding price, kept while you stay subscribed.{" "}
+										{founder.remaining} of {founder.total} left.
+									</p>
+								)}
 								<p className="mt-2 text-sm text-muted-foreground">{p.desc}</p>
 								<Link to="/login" className="mt-5 block">
 									<Button
@@ -505,7 +581,56 @@ function PricingPreview() {
 						</Reveal>
 					))}
 				</div>
+				<p className="mx-auto mt-6 max-w-2xl text-center text-sm text-muted-foreground">
+					Not for you? Ask within 14 days of your first Pro payment for a full
+					refund.{" "}
+					<Link to="/pricing" className="text-primary hover:underline">
+						See all plans
+					</Link>
+				</p>
 			</div>
+		</section>
+	);
+}
+
+/** A real person behind a new product, and an honest "when it isn't for you". */
+function FounderNote() {
+	return (
+		<section className="mx-auto max-w-3xl px-5 pt-24">
+			<Reveal>
+				<div className="flex flex-col gap-5 border border-border p-6 sm:flex-row sm:items-start">
+					<img
+						src="https://github.com/ingfranciscastillo.png?size=96"
+						alt="Francis Castillo"
+						width={48}
+						height={48}
+						loading="lazy"
+						decoding="async"
+						className="size-12 shrink-0 rounded-full border border-border"
+					/>
+					<div>
+						<h2 className="font-bold">Built by one developer, in the open</h2>
+						<p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+							I'm Francis, a developer from the Dominican Republic, and I build
+							Vitalgate on my own. If it doesn't work with your setup, write to
+							me through the{" "}
+							<Link to="/contact" className="text-primary hover:underline">
+								contact form
+							</Link>
+							: I read and answer every message.
+						</p>
+						<p className="mt-3 text-sm leading-relaxed text-muted-foreground">
+							Not the right fit if you need production monitoring around the
+							clock from many locations: Vitalgate checks pull requests, before
+							they ship.{" "}
+							<Link to="/compare" className="text-primary hover:underline">
+								See how it compares
+							</Link>
+							.
+						</p>
+					</div>
+				</div>
+			</Reveal>
 		</section>
 	);
 }
