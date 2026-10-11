@@ -49,6 +49,7 @@ import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { useIsOrgAdmin } from "@/lib/org-roles";
 import { repoDetailQueryOptions } from "@/lib/repo-detail.queries";
 import { setRepoPrComments } from "@/lib/repo-settings.functions";
+import { SITE_URL } from "@/lib/seo";
 
 const levelIcon = {
 	critical: WarningOctagonIcon,
@@ -568,6 +569,7 @@ function RepoDetail() {
 									</Button>
 								</form>
 							</Card>
+							{!repo.private && <ReadmeBadgeCard fullName={repo.fullName} />}
 							<Card className="p-5">
 								<div className="flex items-start justify-between gap-4">
 									<div>
@@ -729,5 +731,40 @@ function RepoDetail() {
 				</TabsContent>
 			</Tabs>
 		</AppShell>
+	);
+}
+
+/** Markdown for the README badge, which shows the latest audited PR's result. Public repos only. */
+function ReadmeBadgeCard({ fullName }: { fullName: string }) {
+	const badgeUrl = `${SITE_URL}/api/badge?repo=${fullName}`;
+	const markdown = `[![Performance budgets](${badgeUrl})](${SITE_URL}/?utm_source=github&utm_medium=badge)`;
+	return (
+		<Card className="p-5">
+			<h2 className="font-semibold text-sm">README badge</h2>
+			<p className="mt-1 text-xs text-muted-foreground">
+				Shows whether the latest audited pull request passed its budgets.
+			</p>
+			<img
+				src={badgeUrl}
+				alt="Performance budgets badge"
+				className="mt-3 h-5"
+			/>
+			<div className="mt-3 flex items-start gap-2">
+				<code className="block flex-1 break-all rounded-md bg-muted px-3 py-2 font-mono text-xs">
+					{markdown}
+				</code>
+				<Button
+					size="sm"
+					variant="outline"
+					onClick={() =>
+						navigator.clipboard
+							.writeText(markdown)
+							.then(() => toast.success("Badge Markdown copied"))
+					}
+				>
+					Copy
+				</Button>
+			</div>
+		</Card>
 	);
 }

@@ -10,6 +10,10 @@ import {
  * Hidden marker the workflow looks for to update its previous comment on a
  * PR instead of adding a new one on every push.
  */
+/** Where the comment's credit links to; utm tags tell these visits apart in analytics. */
+const CREDIT_URL =
+	"https://vitalgate.vercel.app/?utm_source=github&utm_medium=pr-comment";
+
 export const PR_COMMENT_MARKER = "<!-- vitalgate-report -->";
 
 const METRIC_ORDER: MetricKey[] = ["PERF", "LCP", "CLS", "FCP", "TBT", "INP"];
@@ -35,6 +39,8 @@ export interface PrCommentInput {
 	isFirstRun: boolean;
 	/** Lighthouse runs the metrics are the median of. */
 	runs: number;
+	/** Free workspaces show a small "Performance budgets by Vitalgate" credit; Pro hides it. */
+	showCredit?: boolean;
 }
 
 const HEADLINE: Record<PrStatus, string> = {
@@ -101,6 +107,6 @@ export function renderPrComment(input: PrCommentInput): string {
 		"| --- | --- | --- | --- | --- |",
 		...rows,
 		"",
-		`<sub>${input.runs > 1 ? `Median of ${input.runs} Lighthouse lab runs` : "Lighthouse lab run"} on this workflow's runner. [Full report on Vitalgate](${input.reportUrl})${input.isFirstRun ? " · First audit for this repo, so there's no baseline to compare against yet." : ""}</sub>`,
+		`<sub>${input.runs > 1 ? `Median of ${input.runs} Lighthouse lab runs` : "Lighthouse lab run"} on this workflow's runner. [Full report on Vitalgate](${input.reportUrl})${input.isFirstRun ? " · First audit for this repo, so there's no baseline to compare against yet." : ""}${input.showCredit ? ` · Performance budgets by [Vitalgate](${CREDIT_URL})` : ""}</sub>`,
 	].join("\n");
 }

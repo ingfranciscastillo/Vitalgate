@@ -21,6 +21,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedSettingsRouteImport } from './routes/_authenticated/settings'
 import { Route as AuthenticatedTeamRouteImport } from './routes/_authenticated/team'
 import { Route as AcceptInvitationInvitationIdRouteImport } from './routes/accept-invitation/$invitationId'
+import { Route as ApiBadgeRouteImport } from './routes/api/badge'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as CompareIndexRouteImport } from './routes/compare/index'
 import { Route as CompareSlugRouteImport } from './routes/compare/$slug'
@@ -100,6 +101,11 @@ const AcceptInvitationInvitationIdRoute =
     path: '/accept-invitation/$invitationId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiBadgeRoute = ApiBadgeRouteImport.update({
+  id: '/api/badge',
+  path: '/api/badge',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIngestRoute = ApiIngestRouteImport.update({
   id: '/api/ingest',
   path: '/api/ingest',
@@ -210,6 +216,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
@@ -241,6 +248,7 @@ export interface FileRoutesByTo {
   '/settings': typeof AuthenticatedSettingsRoute
   '/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/_authenticated/settings': typeof AuthenticatedSettingsRoute
   '/_authenticated/team': typeof AuthenticatedTeamRoute
   '/accept-invitation/$invitationId': typeof AcceptInvitationInvitationIdRoute
+  '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
   '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/accept-invitation/$invitationId'
+    | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
     | '/tools/core-web-vitals'
@@ -338,6 +348,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/team'
     | '/accept-invitation/$invitationId'
+    | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
     | '/tools/core-web-vitals'
@@ -370,6 +381,7 @@ export interface FileRouteTypes {
     | '/_authenticated/settings'
     | '/_authenticated/team'
     | '/accept-invitation/$invitationId'
+    | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
     | '/tools/core-web-vitals'
@@ -399,6 +411,7 @@ export interface RootRouteChildren {
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
   TermsRoute: typeof TermsRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
+  ApiBadgeRoute: typeof ApiBadgeRoute
   ApiIngestRoute: typeof ApiIngestRoute
   CompareSlugRoute: typeof CompareSlugRoute
   ToolsCoreWebVitalsRoute: typeof ToolsCoreWebVitalsRoute
@@ -498,6 +511,13 @@ declare module '@tanstack/react-router' {
       path: '/accept-invitation/$invitationId'
       fullPath: '/accept-invitation/$invitationId'
       preLoaderRoute: typeof AcceptInvitationInvitationIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/badge': {
+      id: '/api/badge'
+      path: '/api/badge'
+      fullPath: '/api/badge'
+      preLoaderRoute: typeof ApiBadgeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest': {
@@ -666,6 +686,7 @@ const rootRouteChildren: RootRouteChildren = {
   PrivacyPolicyRoute: PrivacyPolicyRoute,
   TermsRoute: TermsRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
+  ApiBadgeRoute: ApiBadgeRoute,
   ApiIngestRoute: ApiIngestRoute,
   CompareSlugRoute: CompareSlugRoute,
   ToolsCoreWebVitalsRoute: ToolsCoreWebVitalsRoute,

@@ -9,6 +9,7 @@ import {
 	slackPayload,
 	teamsPayload,
 } from "@/lib/alert-messages";
+import { renderBadge } from "@/lib/badge";
 import { escapeHtml } from "@/lib/html";
 import { PR_COMMENT_MARKER, renderPrComment } from "@/lib/pr-comment";
 
@@ -193,5 +194,34 @@ describe("Teams and Google Chat payloads", () => {
 		const { text } = googleChatPayload(alerts, ctx, links);
 		expect(text).not.toContain("<users/all>");
 		expect(text).toContain(`<${links.app}|View in Vitalgate>`);
+	});
+});
+
+describe("PR comment credit", () => {
+	const base = {
+		status: "passing" as const,
+		metrics: { LCP: 2000 },
+		baseline: {},
+		budgets: [],
+		reportUrl: "https://vitalgate.example/pulls/p1",
+		isFirstRun: true,
+		runs: 3,
+	};
+	it("credits Vitalgate on Free and hides it on Pro", () => {
+		expect(renderPrComment({ ...base, showCredit: true })).toContain(
+			"Performance budgets by [Vitalgate]",
+		);
+		expect(renderPrComment({ ...base, showCredit: false })).not.toContain(
+			"Performance budgets by",
+		);
+	});
+});
+
+describe("README badge", () => {
+	it("renders each state as an accessible SVG", () => {
+		const svg = renderBadge("failing");
+		expect(svg.startsWith("<svg")).toBe(true);
+		expect(svg).toContain('aria-label="performance budgets: failing"');
+		expect(renderBadge("none")).toContain("no audits yet");
 	});
 });

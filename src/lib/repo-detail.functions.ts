@@ -53,6 +53,8 @@ export interface RepoDetail {
 	envVarNames: string[];
 	postPrComments: boolean;
 	auditMode: "build" | "preview";
+	/** Public repositories can show the README badge. */
+	private: boolean;
 	/** Origin real-user metrics are read for, or null if not set. */
 	productionUrl: string | null;
 	budgets: RepoDetailBudget[];
@@ -79,6 +81,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 				postPrComments: repos.postPrComments,
 				auditMode: repos.auditMode,
 				productionUrl: repos.productionUrl,
+				private: repos.private,
 			})
 			.from(repos)
 			.where(
@@ -157,6 +160,7 @@ export const getRepoDetail = createServerFn({ method: "GET" })
 			postPrComments: repo.postPrComments,
 			auditMode: repo.auditMode,
 			productionUrl: repo.productionUrl,
+			private: repo.private,
 			budgets: budgetRows,
 			pulls: pullRows,
 			alerts: alertRows.map((a) => ({

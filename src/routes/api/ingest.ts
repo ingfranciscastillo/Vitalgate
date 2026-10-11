@@ -30,6 +30,8 @@ import type {
 	PrStatus,
 	Severity,
 } from "@/lib/mock-data";
+import { isPro } from "@/lib/plan";
+import { getOrgPlan } from "@/lib/plan.server";
 import { renderPrComment } from "@/lib/pr-comment";
 
 const metricsSchema = z
@@ -416,6 +418,7 @@ async function handleIngest(request: Request) {
 		reportUrl,
 		isFirstRun: !lastRun,
 		runs: body.runs ?? 1,
+		showCredit: !isPro(await getOrgPlan(organizationId)),
 	});
 	const comment = repo.postPrComments ? results : null;
 
