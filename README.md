@@ -11,6 +11,8 @@
 ![pnpm](https://img.shields.io/badge/pnpm-12-F69220?logo=pnpm&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
 
+<img src="public/demo/vitalgate-demo.gif" width="720" alt="A pull request deploys, the Vitalgate check fails on a broken budget with a results comment, a fix is pushed and every budget passes">
+
 [Overview](#overview) • [How it works](#how-it-works) • [Getting started](#getting-started) • [Configuration](#configuration) • [Development](#development) • [Deployment](#deployment)
 
 </div>

@@ -5,7 +5,6 @@ import {
 	FlowArrowIcon,
 	GaugeIcon,
 	GitBranchIcon,
-	GitPullRequestIcon,
 	LightningIcon,
 	ShieldCheckIcon,
 	StackIcon,
@@ -14,10 +13,9 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { animate, motion, useInView, useReducedMotion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { MarketingShell } from "@/components/marketing-shell";
-import { MetricCard } from "@/components/metric-card";
 import { PrCommentPreview } from "@/components/pr-comment-preview";
+import { PrFlowDemo } from "@/components/pr-flow-demo";
 import { Reveal } from "@/components/reveal";
-import { StatusBadge } from "@/components/status-badge";
 import {
 	Accordion,
 	AccordionContent,
@@ -26,7 +24,6 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
-import { getRepo, type MetricKey, PRS, REPOS } from "@/lib/mock-data";
 import { EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { OG_IMAGE_META, SITE_URL } from "@/lib/seo";
 
@@ -91,9 +88,6 @@ function Landing() {
 }
 
 function Hero() {
-	const previewPr = PRS.find((p) => p.status === "failing") ?? PRS[0];
-	const previewRepo = getRepo(previewPr.repoId) ?? REPOS[0];
-	const previewMetrics: MetricKey[] = ["PERF", "LCP", "CLS", "TBT"];
 	const reduce = useReducedMotion();
 	const item = staggerItem(reduce);
 
@@ -138,26 +132,7 @@ function Hero() {
 				</motion.div>
 
 				<Reveal delay={0.1}>
-					<div className="border border-border p-4 sm:p-5">
-						<div className="flex items-center gap-2 border-b border-border pb-3 font-mono text-xs text-muted-foreground">
-							<GitPullRequestIcon className="size-3.5" weight="bold" />
-							{previewRepo.fullName} #{previewPr.number}
-							<StatusBadge status={previewPr.status} />
-						</div>
-						<div className="mt-4 grid grid-cols-2 gap-3">
-							{previewMetrics.map((key) => (
-								<MetricCard
-									key={key}
-									metric={key}
-									value={previewPr.metrics[key]}
-									baseline={previewPr.baseline[key]}
-									budget={
-										previewRepo.budgets.find((b) => b.metric === key)?.max
-									}
-								/>
-							))}
-						</div>
-					</div>
+					<PrFlowDemo />
 				</Reveal>
 			</div>
 		</section>
