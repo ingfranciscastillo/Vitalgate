@@ -78,7 +78,25 @@ export async function deliverAlerts(
 	];
 	if (isPro(plan)) {
 		for (const integration of connected) {
-			tasks.push(deliverWebhook(integration, alerts, ctx, links));
+			// Issue trackers file issues from /api/ingest instead (issue-trackers.server.ts).
+			if (
+				!integration.encryptedWebhookUrl ||
+				integration.provider === "linear"
+			) {
+				continue;
+			}
+			tasks.push(
+				deliverWebhook(
+					{
+						...integration,
+						provider: integration.provider,
+						encryptedWebhookUrl: integration.encryptedWebhookUrl,
+					},
+					alerts,
+					ctx,
+					links,
+				),
+			);
 		}
 	}
 
@@ -167,7 +185,7 @@ async function deliverEmail(
 async function deliverWebhook(
 	integration: {
 		id: string;
-		provider: IntegrationProvider;
+		provider: Exclude<IntegrationProvider, "linear">;
 		encryptedWebhookUrl: string;
 		encryptedSigningSecret: string | null;
 	},

@@ -212,6 +212,11 @@ function PrivacyPolicy() {
 									your channel.
 								</li>
 								<li>
+									<strong>Linear</strong> — only if you connect it: when a pull
+									request breaks a required budget, we create an issue with its
+									repository, number, title and results in the team you chose.
+								</li>
+								<li>
 									<strong>Your webhook endpoint</strong> — only if you connect
 									one: each alert (repository, pull request number, title and
 									author, and the metrics that broke) is sent to the URL you

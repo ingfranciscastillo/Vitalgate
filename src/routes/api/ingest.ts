@@ -22,6 +22,7 @@ import {
 	findOpenPullForCommit,
 	type PullForCommit,
 } from "@/lib/github-pull-for-commit.server";
+import { fileIssuesForFailingPull } from "@/lib/issue-trackers.server";
 import { sendFirstAuditEmailIfFirst } from "@/lib/lifecycle.server";
 import type {
 	AlertRuleKey,
@@ -441,6 +442,20 @@ async function handleIngest(request: Request) {
 			prNumber: prNumber,
 			body: comment,
 		}));
+
+	// A PR that breaks a required budget gets one issue in the workspace's
+	// tracker (Linear), if one is connected. Best-effort, like alerts.
+	if (status === "failing") {
+		await fileIssuesForFailingPull({
+			organizationId,
+			pullId: pull.id,
+			repoFullName: repo.fullName,
+			prNumber,
+			prTitle: pr.title,
+			resultsMarkdown: results,
+			pullUrl: reportUrl,
+		});
+	}
 
 	// Only does anything on the workspace's very first audit (sent once).
 	await sendFirstAuditEmailIfFirst({

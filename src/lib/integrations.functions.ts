@@ -13,6 +13,13 @@ import {
 	getDiscordAuthorizeUrl,
 	getSlackAuthorizeUrl,
 } from "@/lib/integrations.server";
+import type { IssueTrackerTarget } from "@/lib/issue-trackers";
+import {
+	getLinearAuthorizeUrl,
+	isLinearConfigured,
+	listLinearTeams,
+	setLinearTeam,
+} from "@/lib/issue-trackers.server";
 import type { PastedChatProvider } from "@/lib/mock-data";
 import { signOAuthState } from "@/lib/oauth-state.server";
 import { requireOrgAdmin } from "@/lib/org-access.server";
@@ -45,6 +52,14 @@ export interface IntegrationsOverview {
 	teams: { connected: boolean; label: string | null };
 	googleChat: { connected: boolean; label: string | null };
 	webhook: { connected: boolean; label: string | null };
+	linear: {
+		connected: boolean;
+		label: string | null;
+		/** The team issues are filed in, once chosen. */
+		team: string | null;
+		/** False until LINEAR_CLIENT_ID/SECRET are set on this deployment. */
+		configured: boolean;
+	};
 	/** Slack/Discord are Pro-only; the client uses this to show an upgrade prompt instead of a Connect button. */
 	plan: Plan;
 }
@@ -72,6 +87,7 @@ export const getIntegrationsOverview = createServerFn({
 						.select({
 							provider: integrations.provider,
 							label: integrations.label,
+							config: integrations.config,
 						})
 						.from(integrations)
 						.where(eq(integrations.organizationId, organizationId))
@@ -121,6 +137,15 @@ export const getIntegrationsOverview = createServerFn({
 			connected: byProvider.has("google_chat"),
 			label: byProvider.get("google_chat") ?? null,
 		},
+		linear: {
+			connected: byProvider.has("linear"),
+			label: byProvider.get("linear") ?? null,
+			team: (() => {
+				const config = connected.find((r) => r.provider === "linear")?.config;
+				return config?.kind === "linear" ? config.teamName : null;
+			})(),
+			configured: isLinearConfigured(),
+		},
 		webhook: {
 			connected: byProvider.has("webhook"),
 			label: byProvider.get("webhook") ?? null,
@@ -137,15 +162,15 @@ export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
 
 		const plan = await getOrgPlan(organizationId);
 		if (!isPro(plan)) {
-			throw new Error(
-				"Slack and Discord alerts are a Pro feature. Upgrade to connect.",
-			);
+			throw new Error("Integrations are a Pro feature. Upgrade to connect.");
 		}
 
 		const state = signOAuthState(organizationId);
 		return provider === "slack"
 			? getSlackAuthorizeUrl(state)
-			: getDiscordAuthorizeUrl(state);
+			: provider === "linear"
+				? getLinearAuthorizeUrl(state)
+				: getDiscordAuthorizeUrl(state);
 	});
 
 export const disconnectIntegration = createServerFn({ method: "POST" })
@@ -212,7 +237,9 @@ async function getWorkspaceWebhook(organizationId: string) {
 			),
 		)
 		.limit(1);
-	if (!row?.encryptedSigningSecret) throw new Error("No webhook is connected");
+	if (!row?.encryptedSigningSecret || !row.encryptedWebhookUrl) {
+		throw new Error("No webhook is connected");
+	}
 	return {
 		url: decryptSecret(row.encryptedWebhookUrl),
 		secret: decryptSecret(row.encryptedSigningSecret),
@@ -327,7 +354,7 @@ export const sendTestChatMessage = createServerFn({ method: "POST" })
 				),
 			)
 			.limit(1);
-		if (!row) throw new Error("Not connected");
+		if (!row?.encryptedWebhookUrl) throw new Error("Not connected");
 		const alerts = [
 			{
 				level: "warning" as const,
@@ -359,4 +386,24 @@ export const sendTestChatMessage = createServerFn({ method: "POST" })
 			signal: AbortSignal.timeout(5000),
 		});
 		return { status: res.status };
+	});
+
+/** Teams of the connected Linear workspace, for choosing where issues go. */
+export const getLinearTeams = createServerFn({ method: "GET" }).handler(
+	async (): Promise<IssueTrackerTarget[]> => {
+		const { organizationId } = await requireOrgAdmin();
+		return listLinearTeams(organizationId);
+	},
+);
+
+/** Sets the Linear team issues are filed in. */
+export const chooseLinearTeam = createServerFn({ method: "POST" })
+	.validator(
+		parseInput(
+			z.object({ id: z.string().min(1).max(100), name: z.string().max(200) }),
+		),
+	)
+	.handler(async ({ data }) => {
+		const { organizationId } = await requireOrgAdmin();
+		await setLinearTeam(organizationId, data);
 	});

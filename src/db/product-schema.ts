@@ -11,6 +11,7 @@ import {
 	uniqueIndex,
 } from "drizzle-orm/pg-core";
 import type { CruxSnapshot } from "@/lib/crux";
+import type { IssueTrackerConfig } from "@/lib/issue-trackers";
 import type {
 	Action,
 	AlertChannel,
@@ -331,15 +332,48 @@ export const integrations = pgTable(
 		provider: text("provider").notNull().$type<IntegrationProvider>(),
 		/** Workspace/channel name for display, e.g. "Acme Inc · #perf-alerts". */
 		label: text("label").notNull(),
-		/** AES-256-GCM ciphertext, "iv.authTag.ciphertext" (each base64) — see crypto.server.ts. */
-		encryptedWebhookUrl: text("encrypted_webhook_url").notNull(),
+		/**
+		 * Chat and webhook integrations: AES-256-GCM ciphertext,
+		 * "iv.authTag.ciphertext" (each base64) — see crypto.server.ts. Null
+		 * for issue trackers, which use encryptedCredentials instead.
+		 */
+		encryptedWebhookUrl: text("encrypted_webhook_url"),
 		/** Outgoing webhooks only: the HMAC signing secret, encrypted like the URL. */
 		encryptedSigningSecret: text("encrypted_signing_secret"),
+		/** Issue trackers (Linear, Jira): OAuth tokens as encrypted JSON. */
+		encryptedCredentials: text("encrypted_credentials"),
+		/** Issue trackers: where issues go, e.g. a Linear team or a Jira project. */
+		config: jsonb("config").$type<IssueTrackerConfig>(),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [
 		uniqueIndex("integrations_organization_id_provider_unique").on(
 			t.organizationId,
+			t.provider,
+		),
+	],
+);
+
+/**
+ * The issue Vitalgate filed in a tracker for a pull request that broke a
+ * required budget, so each PR gets at most one per tracker.
+ */
+export const pullIssues = pgTable(
+	"pull_issues",
+	{
+		id: id(),
+		pullRequestId: text("pull_request_id")
+			.notNull()
+			.references(() => pullRequests.id, { onDelete: "cascade" }),
+		provider: text("provider").notNull().$type<IntegrationProvider>(),
+		/** e.g. "ENG-123" or "WEB-42". */
+		identifier: text("identifier").notNull(),
+		url: text("url").notNull(),
+		createdAt: timestamp("created_at").defaultNow().notNull(),
+	},
+	(t) => [
+		uniqueIndex("pull_issues_pull_request_id_provider_unique").on(
+			t.pullRequestId,
 			t.provider,
 		),
 	],

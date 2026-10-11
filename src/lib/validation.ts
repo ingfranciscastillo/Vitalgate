@@ -22,6 +22,7 @@ export const integrationProviderSchema = z.enum([
 	"teams",
 	"google_chat",
 	"webhook",
+	"linear",
 ]) satisfies z.ZodType<IntegrationProvider>;
 
 export const pastedChatProviderSchema = z.enum([
@@ -32,6 +33,7 @@ export const pastedChatProviderSchema = z.enum([
 export const oauthIntegrationProviderSchema = z.enum([
 	"slack",
 	"discord",
+	"linear",
 ]) satisfies z.ZodType<OAuthIntegrationProvider>;
 
 export const alertRuleKeySchema = z.enum([

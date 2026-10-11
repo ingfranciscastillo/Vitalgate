@@ -115,11 +115,12 @@ export type IntegrationProvider =
 	| "discord"
 	| "teams"
 	| "google_chat"
-	| "webhook";
+	| "webhook"
+	| "linear";
 /** Chat integrations connected by pasting the channel's incoming-webhook URL. */
 export type PastedChatProvider = "teams" | "google_chat";
 /** Integrations connected through an OAuth redirect (webhooks are pasted in instead). */
-export type OAuthIntegrationProvider = "slack" | "discord";
+export type OAuthIntegrationProvider = "slack" | "discord" | "linear";
 
 export interface AlertItem {
 	id: string;

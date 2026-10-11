@@ -33,12 +33,15 @@ import { authClient } from "@/lib/auth-client";
 import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
 import {
+	chooseLinearTeam,
 	connectChatWebhook,
 	connectWebhook,
 	disconnectIntegration,
 	getGithubInstallUrl,
 	getIntegrationAuthorizeUrl,
+	getLinearTeams,
 	getWebhookSecret,
+	type IntegrationsOverview,
 	sendTestChatMessage,
 	sendTestWebhook,
 } from "@/lib/integrations.functions";
@@ -400,6 +403,146 @@ function ChatWebhookCard({
 }
 
 /**
+ * Linear: connected through OAuth, then pointed at a team. A pull request
+ * that breaks a required budget gets one issue there. Pro only.
+ */
+function LinearCard({
+	linear,
+	pro,
+	isAdmin,
+	connecting,
+	onConnect,
+}: {
+	linear: IntegrationsOverview["linear"];
+	pro: boolean;
+	isAdmin: boolean;
+	connecting: boolean;
+	onConnect: () => void;
+}) {
+	const queryClient = useQueryClient();
+	const [choosing, setChoosing] = useState(false);
+	const [teamId, setTeamId] = useState("");
+	const pickTeam = linear.connected && (choosing || !linear.team);
+
+	const teams = useQuery({
+		queryKey: ["linear-teams"],
+		queryFn: () => getLinearTeams(),
+		enabled: pickTeam && isAdmin,
+		staleTime: 60_000,
+	});
+	const save = useMutation({
+		mutationFn: chooseLinearTeam,
+		onSuccess: () => {
+			setChoosing(false);
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success("Linear team saved");
+		},
+		onError: (err) =>
+			toast.error(err instanceof Error ? err.message : "Could not save"),
+	});
+	const disconnect = useMutation({
+		mutationFn: disconnectIntegration,
+		onSuccess: () => {
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success("Linear disconnected");
+		},
+		onError: () => toast.error("Could not disconnect"),
+	});
+
+	return (
+		<IntegrationCardShell
+			icon={KanbanIcon}
+			name="Linear"
+			connected={linear.connected}
+			proLocked={!pro}
+			desc={
+				!linear.configured
+					? "Not available on this server yet."
+					: linear.connected
+						? linear.team
+							? `A pull request that breaks a required budget gets an issue in ${linear.team}.`
+							: `${linear.label ?? "Connected"}. Choose the team issues go to.`
+						: pro
+							? "Open an issue when a pull request breaks a required budget."
+							: "Upgrade to Pro to file issues in Linear"
+			}
+		>
+			{!linear.configured ? null : !pro ? (
+				<Link to="/settings" search={{ tab: "billing" }}>
+					<Button variant="outline" size="sm">
+						Upgrade to Pro
+					</Button>
+				</Link>
+			) : !linear.connected ? (
+				<Button
+					size="sm"
+					loading={connecting}
+					disabled={!isAdmin}
+					onClick={onConnect}
+				>
+					{connecting ? "Connecting…" : "Connect"}
+				</Button>
+			) : pickTeam ? (
+				<form
+					className="flex flex-col gap-2 sm:flex-row"
+					onSubmit={(e) => {
+						e.preventDefault();
+						const team = teams.data?.find((t) => t.id === teamId);
+						if (team) save.mutate({ data: team });
+					}}
+				>
+					{teams.isPending ? (
+						<Skeleton className="h-9 flex-1" />
+					) : (
+						<select
+							aria-label="Linear team"
+							value={teamId}
+							onChange={(e) => setTeamId(e.target.value)}
+							className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
+						>
+							<option value="">Choose a team…</option>
+							{teams.data?.map((t) => (
+								<option key={t.id} value={t.id}>
+									{t.name}
+								</option>
+							))}
+						</select>
+					)}
+					<Button
+						type="submit"
+						size="sm"
+						loading={save.isPending}
+						disabled={!teamId || !isAdmin}
+					>
+						Save
+					</Button>
+				</form>
+			) : (
+				<div className="flex flex-wrap gap-2">
+					<Button
+						size="sm"
+						variant="outline"
+						disabled={!isAdmin}
+						onClick={() => setChoosing(true)}
+					>
+						Change team
+					</Button>
+					<Button
+						size="sm"
+						variant="ghost"
+						loading={disconnect.isPending}
+						disabled={!isAdmin}
+						onClick={() => disconnect.mutate({ data: "linear" })}
+					>
+						Disconnect
+					</Button>
+				</div>
+			)}
+		</IntegrationCardShell>
+	);
+}
+
+/**
  * Outgoing webhook: paste an https URL, get a signing secret, receive every
  * alert as signed JSON. Pro only, like Slack and Discord.
  */
@@ -607,7 +750,9 @@ function IntegrationsTab() {
 				? "Slack"
 				: integration === "discord"
 					? "Discord"
-					: "GitHub";
+					: integration === "linear"
+						? "Linear"
+						: "GitHub";
 		if (status === "connected") {
 			toast.success(`${providerName} connected`);
 		} else {
@@ -829,6 +974,16 @@ function IntegrationsTab() {
 				</motion.div>
 
 				<motion.div variants={staggerItem(reduce)} className="h-full">
+					<LinearCard
+						linear={data.linear}
+						pro={isPro(data.plan)}
+						isAdmin={isAdmin === true}
+						connecting={connecting === "linear"}
+						onConnect={() => connect("linear")}
+					/>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)} className="h-full">
 					<WebhookCard
 						connected={data.webhook.connected}
 						label={data.webhook.label}
@@ -867,11 +1022,6 @@ const UPCOMING_INTEGRATIONS: {
 	name: string;
 	desc: string;
 }[] = [
-	{
-		icon: KanbanIcon,
-		name: "Linear",
-		desc: "Open an issue when a required budget fails on the default branch.",
-	},
 	{
 		icon: TicketIcon,
 		name: "Jira",
