@@ -33,15 +33,17 @@ import { authClient } from "@/lib/auth-client";
 import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
 import {
+	chooseJiraProject,
 	chooseLinearTeam,
 	connectChatWebhook,
 	connectWebhook,
 	disconnectIntegration,
 	getGithubInstallUrl,
 	getIntegrationAuthorizeUrl,
+	getJiraProjects,
 	getLinearTeams,
 	getWebhookSecret,
-	type IntegrationsOverview,
+	type IssueTrackerState,
 	sendTestChatMessage,
 	sendTestWebhook,
 } from "@/lib/integrations.functions";
@@ -402,40 +404,61 @@ function ChatWebhookCard({
 	);
 }
 
+const TRACKERS = {
+	linear: {
+		name: "Linear",
+		icon: KanbanIcon,
+		targetNoun: "team",
+		list: () => getLinearTeams(),
+		choose: chooseLinearTeam,
+	},
+	jira: {
+		name: "Jira",
+		icon: TicketIcon,
+		targetNoun: "project",
+		list: () => getJiraProjects(),
+		choose: chooseJiraProject,
+	},
+} as const;
+
 /**
- * Linear: connected through OAuth, then pointed at a team. A pull request
- * that breaks a required budget gets one issue there. Pro only.
+ * An issue tracker (Linear, Jira): connected through OAuth, then pointed at
+ * a team or project. A pull request that breaks a required budget gets one
+ * issue there. Pro only.
  */
-function LinearCard({
-	linear,
+function TrackerCard({
+	provider,
+	state,
 	pro,
 	isAdmin,
 	connecting,
 	onConnect,
 }: {
-	linear: IntegrationsOverview["linear"];
+	provider: keyof typeof TRACKERS;
+	state: IssueTrackerState;
 	pro: boolean;
 	isAdmin: boolean;
 	connecting: boolean;
 	onConnect: () => void;
 }) {
+	const meta = TRACKERS[provider];
 	const queryClient = useQueryClient();
 	const [choosing, setChoosing] = useState(false);
-	const [teamId, setTeamId] = useState("");
-	const pickTeam = linear.connected && (choosing || !linear.team);
+	const [targetId, setTargetId] = useState("");
+	const pickTarget = state.connected && (choosing || !state.target);
 
-	const teams = useQuery({
-		queryKey: ["linear-teams"],
-		queryFn: () => getLinearTeams(),
-		enabled: pickTeam && isAdmin,
+	const targets = useQuery({
+		queryKey: ["tracker-targets", provider],
+		queryFn: meta.list,
+		enabled: pickTarget && isAdmin,
 		staleTime: 60_000,
 	});
 	const save = useMutation({
-		mutationFn: chooseLinearTeam,
+		mutationFn: meta.choose,
 		onSuccess: () => {
 			setChoosing(false);
 			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
-			toast.success("Linear team saved");
+			toast.success(`${meta.name} ${meta.targetNoun} saved`);
 		},
 		onError: (err) =>
 			toast.error(err instanceof Error ? err.message : "Could not save"),
@@ -444,36 +467,36 @@ function LinearCard({
 		mutationFn: disconnectIntegration,
 		onSuccess: () => {
 			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
-			toast.success("Linear disconnected");
+			toast.success(`${meta.name} disconnected`);
 		},
 		onError: () => toast.error("Could not disconnect"),
 	});
 
 	return (
 		<IntegrationCardShell
-			icon={KanbanIcon}
-			name="Linear"
-			connected={linear.connected}
+			icon={meta.icon}
+			name={meta.name}
+			connected={state.connected}
 			proLocked={!pro}
 			desc={
-				!linear.configured
+				!state.configured
 					? "Not available on this server yet."
-					: linear.connected
-						? linear.team
-							? `A pull request that breaks a required budget gets an issue in ${linear.team}.`
-							: `${linear.label ?? "Connected"}. Choose the team issues go to.`
+					: state.connected
+						? state.target
+							? `A pull request that breaks a required budget gets an issue in ${state.target}.`
+							: `${state.label ?? "Connected"}. Choose the ${meta.targetNoun} issues go to.`
 						: pro
-							? "Open an issue when a pull request breaks a required budget."
-							: "Upgrade to Pro to file issues in Linear"
+							? `Open a ${meta.name} issue when a pull request breaks a required budget.`
+							: `Upgrade to Pro to file issues in ${meta.name}`
 			}
 		>
-			{!linear.configured ? null : !pro ? (
+			{!state.configured ? null : !pro ? (
 				<Link to="/settings" search={{ tab: "billing" }}>
 					<Button variant="outline" size="sm">
 						Upgrade to Pro
 					</Button>
 				</Link>
-			) : !linear.connected ? (
+			) : !state.connected ? (
 				<Button
 					size="sm"
 					loading={connecting}
@@ -482,26 +505,26 @@ function LinearCard({
 				>
 					{connecting ? "Connecting…" : "Connect"}
 				</Button>
-			) : pickTeam ? (
+			) : pickTarget ? (
 				<form
 					className="flex flex-col gap-2 sm:flex-row"
 					onSubmit={(e) => {
 						e.preventDefault();
-						const team = teams.data?.find((t) => t.id === teamId);
-						if (team) save.mutate({ data: team });
+						const target = targets.data?.find((t) => t.id === targetId);
+						if (target) save.mutate({ data: target });
 					}}
 				>
-					{teams.isPending ? (
+					{targets.isPending ? (
 						<Skeleton className="h-9 flex-1" />
 					) : (
 						<select
-							aria-label="Linear team"
-							value={teamId}
-							onChange={(e) => setTeamId(e.target.value)}
+							aria-label={`${meta.name} ${meta.targetNoun}`}
+							value={targetId}
+							onChange={(e) => setTargetId(e.target.value)}
 							className="h-9 flex-1 rounded-md border border-input bg-background px-3 text-sm"
 						>
-							<option value="">Choose a team…</option>
-							{teams.data?.map((t) => (
+							<option value="">Choose a {meta.targetNoun}…</option>
+							{targets.data?.map((t) => (
 								<option key={t.id} value={t.id}>
 									{t.name}
 								</option>
@@ -512,7 +535,7 @@ function LinearCard({
 						type="submit"
 						size="sm"
 						loading={save.isPending}
-						disabled={!teamId || !isAdmin}
+						disabled={!targetId || !isAdmin}
 					>
 						Save
 					</Button>
@@ -525,14 +548,14 @@ function LinearCard({
 						disabled={!isAdmin}
 						onClick={() => setChoosing(true)}
 					>
-						Change team
+						Change {meta.targetNoun}
 					</Button>
 					<Button
 						size="sm"
 						variant="ghost"
 						loading={disconnect.isPending}
 						disabled={!isAdmin}
-						onClick={() => disconnect.mutate({ data: "linear" })}
+						onClick={() => disconnect.mutate({ data: provider })}
 					>
 						Disconnect
 					</Button>
@@ -752,7 +775,9 @@ function IntegrationsTab() {
 					? "Discord"
 					: integration === "linear"
 						? "Linear"
-						: "GitHub";
+						: integration === "jira"
+							? "Jira"
+							: "GitHub";
 		if (status === "connected") {
 			toast.success(`${providerName} connected`);
 		} else {
@@ -974,12 +999,24 @@ function IntegrationsTab() {
 				</motion.div>
 
 				<motion.div variants={staggerItem(reduce)} className="h-full">
-					<LinearCard
-						linear={data.linear}
+					<TrackerCard
+						provider="linear"
+						state={data.linear}
 						pro={isPro(data.plan)}
 						isAdmin={isAdmin === true}
 						connecting={connecting === "linear"}
 						onConnect={() => connect("linear")}
+					/>
+				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)} className="h-full">
+					<TrackerCard
+						provider="jira"
+						state={data.jira}
+						pro={isPro(data.plan)}
+						isAdmin={isAdmin === true}
+						connecting={connecting === "jira"}
+						onConnect={() => connect("jira")}
 					/>
 				</motion.div>
 
@@ -992,42 +1029,9 @@ function IntegrationsTab() {
 					/>
 				</motion.div>
 			</motion.div>
-
-			<section className="mt-8 max-w-3xl">
-				<h2 className="text-sm font-semibold">Coming soon</h2>
-				<ul className="mt-3 grid gap-3 sm:grid-cols-2">
-					{UPCOMING_INTEGRATIONS.map(({ icon: Icon, name, desc }) => (
-						<li
-							key={name}
-							className="flex items-start gap-3 rounded-md border border-dashed border-border p-4"
-						>
-							<div className="h-8 w-8 shrink-0 rounded-md bg-muted grid place-items-center text-muted-foreground">
-								<Icon className="h-4 w-4" />
-							</div>
-							<div>
-								<div className="text-sm font-medium">{name}</div>
-								<p className="mt-0.5 text-xs text-muted-foreground">{desc}</p>
-							</div>
-						</li>
-					))}
-				</ul>
-			</section>
 		</>
 	);
 }
-
-/** Planned integrations, listed so workspaces know what's next. Not connectable yet. */
-const UPCOMING_INTEGRATIONS: {
-	icon: ComponentType<{ className?: string }>;
-	name: string;
-	desc: string;
-}[] = [
-	{
-		icon: TicketIcon,
-		name: "Jira",
-		desc: "Create a ticket for each regression, linked to its pull request.",
-	},
-];
 
 /**
  * better-auth's /list-sessions requires a "fresh" session (created within

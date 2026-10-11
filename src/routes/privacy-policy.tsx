@@ -212,9 +212,10 @@ function PrivacyPolicy() {
 									your channel.
 								</li>
 								<li>
-									<strong>Linear</strong> — only if you connect it: when a pull
-									request breaks a required budget, we create an issue with its
-									repository, number, title and results in the team you chose.
+									<strong>Linear / Jira</strong> — only if you connect them:
+									when a pull request breaks a required budget, we create an
+									issue with its repository, number, title and results in the
+									team or project you chose.
 								</li>
 								<li>
 									<strong>Your webhook endpoint</strong> — only if you connect

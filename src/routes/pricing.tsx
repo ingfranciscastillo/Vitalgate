@@ -58,7 +58,7 @@ const plans = [
 			"Unlimited repositories",
 			"Everything in Free",
 			"Alerts in Slack, Discord, Teams, Google Chat or a webhook",
-			"Linear issues for pull requests that break a budget",
+			"Linear or Jira issues for pull requests that break a budget",
 			"Custom alert rules (regressions, score thresholds)",
 			"Weekly performance digest email",
 			"Email support",

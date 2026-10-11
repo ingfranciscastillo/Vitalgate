@@ -7,12 +7,14 @@ import type {
 	IssueTrackerConfig,
 	IssueTrackerTarget,
 } from "@/lib/issue-trackers";
+import { createJiraIssue } from "@/lib/jira.server";
 import { isPro } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 
 /**
  * Issue trackers: when a pull request breaks a required budget, Vitalgate
- * files one issue for it in the workspace's tracker. Linear for now.
+ * files one issue for it in each connected tracker: Linear and Jira
+ * (jira.server.ts).
  *
  * Tokens live encrypted in integrations.encrypted_credentials and are
  * refreshed shortly before they expire (Linear's last 24 hours).
@@ -215,12 +217,7 @@ export async function setLinearTeam(
 		);
 }
 
-/**
- * Called by /api/ingest when a pull request fails a required budget: files
- * one issue per PR in each connected tracker (Pro only). Never throws, so
- * a tracker outage can't fail the CI run.
- */
-export async function fileIssuesForFailingPull(opts: {
+interface FailingPull {
 	organizationId: string;
 	pullId: string;
 	repoFullName: string;
@@ -229,64 +226,108 @@ export async function fileIssuesForFailingPull(opts: {
 	/** The results table, as on the PR comment. */
 	resultsMarkdown: string;
 	pullUrl: string;
-}): Promise<void> {
-	try {
-		if (!isPro(await getOrgPlan(opts.organizationId))) return;
-		const access = await linearAccess(opts.organizationId);
-		if (access?.config?.kind !== "linear") return;
+}
 
-		const [existing] = await db
-			.select({ id: pullIssues.id })
-			.from(pullIssues)
-			.where(
-				and(
-					eq(pullIssues.pullRequestId, opts.pullId),
-					eq(pullIssues.provider, "linear"),
-				),
-			)
-			.limit(1);
-		if (existing) return;
+const issueSummary = (p: FailingPull) =>
+	`Performance budget failed: ${p.repoFullName} #${p.prNumber}`.slice(0, 250);
 
-		const prUrl = `https://github.com/${opts.repoFullName}/pull/${opts.prNumber}`;
-		const { issueCreate } = await linearGraphql<{
-			issueCreate: {
-				success: boolean;
-				issue: { identifier: string; url: string } | null;
-			};
-		}>(
-			access.accessToken,
-			`mutation ($input: IssueCreateInput!) {
-				issueCreate(input: $input) { success issue { identifier url } }
-			}`,
-			{
-				input: {
-					teamId: access.config.teamId,
-					title:
-						`Performance budget failed: ${opts.repoFullName} #${opts.prNumber}`.slice(
-							0,
-							250,
-						),
-					description: [
-						`**[${opts.repoFullName} #${opts.prNumber}](${prUrl})**: ${opts.prTitle}`,
-						"",
-						opts.resultsMarkdown.replace(/<!--[\s\S]*?-->\n?/g, ""),
-						"",
-						`[Full report on Vitalgate](${opts.pullUrl})`,
-					].join("\n"),
-				},
+const resultsTable = (p: FailingPull) =>
+	p.resultsMarkdown.replace(/<!--[\s\S]*?-->\n?/g, "").trim();
+
+async function fileLinearIssue(p: FailingPull) {
+	const access = await linearAccess(p.organizationId);
+	if (access?.config?.kind !== "linear") return null;
+	const prUrl = `https://github.com/${p.repoFullName}/pull/${p.prNumber}`;
+	const { issueCreate } = await linearGraphql<{
+		issueCreate: {
+			success: boolean;
+			issue: { identifier: string; url: string } | null;
+		};
+	}>(
+		access.accessToken,
+		`mutation ($input: IssueCreateInput!) {
+			issueCreate(input: $input) { success issue { identifier url } }
+		}`,
+		{
+			input: {
+				teamId: access.config.teamId,
+				title: issueSummary(p),
+				description: [
+					`**[${p.repoFullName} #${p.prNumber}](${prUrl})**: ${p.prTitle}`,
+					"",
+					resultsTable(p),
+					"",
+					`[Full report on Vitalgate](${p.pullUrl})`,
+				].join("\n"),
 			},
-		);
-		if (!issueCreate.success || !issueCreate.issue) return;
-		await db
-			.insert(pullIssues)
-			.values({
-				pullRequestId: opts.pullId,
-				provider: "linear",
-				identifier: issueCreate.issue.identifier,
-				url: issueCreate.issue.url,
-			})
-			.onConflictDoNothing();
+		},
+	);
+	return issueCreate.success ? issueCreate.issue : null;
+}
+
+async function fileJiraIssue(p: FailingPull) {
+	const prUrl = `https://github.com/${p.repoFullName}/pull/${p.prNumber}`;
+	// Jira wiki markup: [text|url] links; the table goes in {noformat} as-is.
+	const safeTitle = p.prTitle.replace(/[[\]{}|]/g, " ");
+	return createJiraIssue(p.organizationId, {
+		summary: issueSummary(p),
+		description: [
+			`[${p.repoFullName} #${p.prNumber}|${prUrl}]: ${safeTitle}`,
+			"",
+			"{noformat}",
+			resultsTable(p).replace(/\{noformat\}/g, ""),
+			"{noformat}",
+			"",
+			`[Full report on Vitalgate|${p.pullUrl}]`,
+		].join("\n"),
+	});
+}
+
+const TRACKERS = [
+	{ provider: "linear", file: fileLinearIssue },
+	{ provider: "jira", file: fileJiraIssue },
+] as const;
+
+/**
+ * Called by /api/ingest when a pull request fails a required budget: files
+ * one issue per PR in each connected tracker (Pro only). Never throws, so
+ * a tracker outage can't fail the CI run.
+ */
+export async function fileIssuesForFailingPull(p: FailingPull): Promise<void> {
+	try {
+		if (!isPro(await getOrgPlan(p.organizationId))) return;
 	} catch (err) {
-		console.error("Filing a tracker issue failed", err);
+		console.error("Filing tracker issues: plan lookup failed", err);
+		return;
 	}
+	await Promise.allSettled(
+		TRACKERS.map(async ({ provider, file }) => {
+			try {
+				const [existing] = await db
+					.select({ id: pullIssues.id })
+					.from(pullIssues)
+					.where(
+						and(
+							eq(pullIssues.pullRequestId, p.pullId),
+							eq(pullIssues.provider, provider),
+						),
+					)
+					.limit(1);
+				if (existing) return;
+				const issue = await file(p);
+				if (!issue) return;
+				await db
+					.insert(pullIssues)
+					.values({
+						pullRequestId: p.pullId,
+						provider,
+						identifier: issue.identifier,
+						url: issue.url,
+					})
+					.onConflictDoNothing();
+			} catch (err) {
+				console.error(`Filing a ${provider} issue failed`, err);
+			}
+		}),
+	);
 }

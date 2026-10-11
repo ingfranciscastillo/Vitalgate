@@ -36,6 +36,7 @@ import { Route as ApiCronWeeklyDigestRouteImport } from './routes/api/cron/weekl
 import { Route as ApiGithubSetupRouteImport } from './routes/api/github/setup'
 import { Route as ApiGithubWebhookRouteImport } from './routes/api/github/webhook'
 import { Route as ApiIntegrationsDiscordCallbackRouteImport } from './routes/api/integrations/discord/callback'
+import { Route as ApiIntegrationsJiraCallbackRouteImport } from './routes/api/integrations/jira/callback'
 import { Route as ApiIntegrationsLinearCallbackRouteImport } from './routes/api/integrations/linear/callback'
 import { Route as ApiIntegrationsSlackCallbackRouteImport } from './routes/api/integrations/slack/callback'
 
@@ -178,6 +179,12 @@ const ApiIntegrationsDiscordCallbackRoute =
     path: '/api/integrations/discord/callback',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiIntegrationsJiraCallbackRoute =
+  ApiIntegrationsJiraCallbackRouteImport.update({
+    id: '/api/integrations/jira/callback',
+    path: '/api/integrations/jira/callback',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiIntegrationsLinearCallbackRoute =
   ApiIntegrationsLinearCallbackRouteImport.update({
     id: '/api/integrations/linear/callback',
@@ -218,6 +225,7 @@ export interface FileRoutesByFullPath {
   '/pulls/': typeof AuthenticatedPullsIndexRoute
   '/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
+  '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
   '/api/integrations/slack/callback': typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -248,6 +256,7 @@ export interface FileRoutesByTo {
   '/pulls': typeof AuthenticatedPullsIndexRoute
   '/repositories': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
+  '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
   '/api/integrations/slack/callback': typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -280,6 +289,7 @@ export interface FileRoutesById {
   '/_authenticated/pulls/': typeof AuthenticatedPullsIndexRoute
   '/_authenticated/repositories/': typeof AuthenticatedRepositoriesIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
+  '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
   '/api/integrations/slack/callback': typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -312,6 +322,7 @@ export interface FileRouteTypes {
     | '/pulls/'
     | '/repositories/'
     | '/api/integrations/discord/callback'
+    | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
     | '/api/integrations/slack/callback'
   fileRoutesByTo: FileRoutesByTo
@@ -342,6 +353,7 @@ export interface FileRouteTypes {
     | '/pulls'
     | '/repositories'
     | '/api/integrations/discord/callback'
+    | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
     | '/api/integrations/slack/callback'
   id:
@@ -373,6 +385,7 @@ export interface FileRouteTypes {
     | '/_authenticated/pulls/'
     | '/_authenticated/repositories/'
     | '/api/integrations/discord/callback'
+    | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
     | '/api/integrations/slack/callback'
   fileRoutesById: FileRoutesById
@@ -396,6 +409,7 @@ export interface RootRouteChildren {
   ApiGithubSetupRoute: typeof ApiGithubSetupRoute
   ApiGithubWebhookRoute: typeof ApiGithubWebhookRoute
   ApiIntegrationsDiscordCallbackRoute: typeof ApiIntegrationsDiscordCallbackRoute
+  ApiIntegrationsJiraCallbackRoute: typeof ApiIntegrationsJiraCallbackRoute
   ApiIntegrationsLinearCallbackRoute: typeof ApiIntegrationsLinearCallbackRoute
   ApiIntegrationsSlackCallbackRoute: typeof ApiIntegrationsSlackCallbackRoute
 }
@@ -591,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiIntegrationsDiscordCallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/integrations/jira/callback': {
+      id: '/api/integrations/jira/callback'
+      path: '/api/integrations/jira/callback'
+      fullPath: '/api/integrations/jira/callback'
+      preLoaderRoute: typeof ApiIntegrationsJiraCallbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/linear/callback': {
       id: '/api/integrations/linear/callback'
       path: '/api/integrations/linear/callback'
@@ -655,6 +676,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiGithubSetupRoute: ApiGithubSetupRoute,
   ApiGithubWebhookRoute: ApiGithubWebhookRoute,
   ApiIntegrationsDiscordCallbackRoute: ApiIntegrationsDiscordCallbackRoute,
+  ApiIntegrationsJiraCallbackRoute: ApiIntegrationsJiraCallbackRoute,
   ApiIntegrationsLinearCallbackRoute: ApiIntegrationsLinearCallbackRoute,
   ApiIntegrationsSlackCallbackRoute: ApiIntegrationsSlackCallbackRoute,
 }

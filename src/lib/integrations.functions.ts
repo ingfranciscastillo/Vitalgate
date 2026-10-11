@@ -20,6 +20,12 @@ import {
 	listLinearTeams,
 	setLinearTeam,
 } from "@/lib/issue-trackers.server";
+import {
+	getJiraAuthorizeUrl,
+	isJiraConfigured,
+	listJiraProjects,
+	setJiraProject,
+} from "@/lib/jira.server";
 import type { PastedChatProvider } from "@/lib/mock-data";
 import { signOAuthState } from "@/lib/oauth-state.server";
 import { requireOrgAdmin } from "@/lib/org-access.server";
@@ -52,16 +58,19 @@ export interface IntegrationsOverview {
 	teams: { connected: boolean; label: string | null };
 	googleChat: { connected: boolean; label: string | null };
 	webhook: { connected: boolean; label: string | null };
-	linear: {
-		connected: boolean;
-		label: string | null;
-		/** The team issues are filed in, once chosen. */
-		team: string | null;
-		/** False until LINEAR_CLIENT_ID/SECRET are set on this deployment. */
-		configured: boolean;
-	};
+	linear: IssueTrackerState;
+	jira: IssueTrackerState;
 	/** Slack/Discord are Pro-only; the client uses this to show an upgrade prompt instead of a Connect button. */
 	plan: Plan;
+}
+
+export interface IssueTrackerState {
+	connected: boolean;
+	label: string | null;
+	/** Where issues are filed (a Linear team, a Jira project), once chosen. */
+	target: string | null;
+	/** False until the tracker's client id and secret are set on this deployment. */
+	configured: boolean;
 }
 
 export const getIntegrationsOverview = createServerFn({
@@ -113,6 +122,23 @@ export const getIntegrationsOverview = createServerFn({
 		]);
 
 	const byProvider = new Map(connected.map((r) => [r.provider, r.label]));
+	const trackerState = (
+		provider: "linear" | "jira",
+		configured: boolean,
+	): IssueTrackerState => {
+		const config = connected.find((r) => r.provider === provider)?.config;
+		return {
+			connected: byProvider.has(provider),
+			label: byProvider.get(provider) ?? null,
+			target:
+				config?.kind === "linear"
+					? config.teamName
+					: config?.kind === "jira"
+						? config.projectName
+						: null,
+			configured,
+		};
+	};
 
 	return {
 		github: {
@@ -137,15 +163,8 @@ export const getIntegrationsOverview = createServerFn({
 			connected: byProvider.has("google_chat"),
 			label: byProvider.get("google_chat") ?? null,
 		},
-		linear: {
-			connected: byProvider.has("linear"),
-			label: byProvider.get("linear") ?? null,
-			team: (() => {
-				const config = connected.find((r) => r.provider === "linear")?.config;
-				return config?.kind === "linear" ? config.teamName : null;
-			})(),
-			configured: isLinearConfigured(),
-		},
+		linear: trackerState("linear", isLinearConfigured()),
+		jira: trackerState("jira", isJiraConfigured()),
 		webhook: {
 			connected: byProvider.has("webhook"),
 			label: byProvider.get("webhook") ?? null,
@@ -170,7 +189,9 @@ export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
 			? getSlackAuthorizeUrl(state)
 			: provider === "linear"
 				? getLinearAuthorizeUrl(state)
-				: getDiscordAuthorizeUrl(state);
+				: provider === "jira"
+					? getJiraAuthorizeUrl(state)
+					: getDiscordAuthorizeUrl(state);
 	});
 
 export const disconnectIntegration = createServerFn({ method: "POST" })
@@ -406,4 +427,24 @@ export const chooseLinearTeam = createServerFn({ method: "POST" })
 	.handler(async ({ data }) => {
 		const { organizationId } = await requireOrgAdmin();
 		await setLinearTeam(organizationId, data);
+	});
+
+/** Projects on the connected Jira site, for choosing where issues go. */
+export const getJiraProjects = createServerFn({ method: "GET" }).handler(
+	async (): Promise<IssueTrackerTarget[]> => {
+		const { organizationId } = await requireOrgAdmin();
+		return listJiraProjects(organizationId);
+	},
+);
+
+/** Sets the Jira project issues are filed in (its issue type is picked automatically). */
+export const chooseJiraProject = createServerFn({ method: "POST" })
+	.validator(
+		parseInput(
+			z.object({ id: z.string().min(1).max(100), name: z.string().max(200) }),
+		),
+	)
+	.handler(async ({ data }) => {
+		const { organizationId } = await requireOrgAdmin();
+		await setJiraProject(organizationId, data.id);
 	});

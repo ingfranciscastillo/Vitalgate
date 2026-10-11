@@ -116,11 +116,12 @@ export type IntegrationProvider =
 	| "teams"
 	| "google_chat"
 	| "webhook"
-	| "linear";
+	| "linear"
+	| "jira";
 /** Chat integrations connected by pasting the channel's incoming-webhook URL. */
 export type PastedChatProvider = "teams" | "google_chat";
 /** Integrations connected through an OAuth redirect (webhooks are pasted in instead). */
-export type OAuthIntegrationProvider = "slack" | "discord" | "linear";
+export type OAuthIntegrationProvider = "slack" | "discord" | "linear" | "jira";
 
 export interface AlertItem {
 	id: string;

@@ -81,7 +81,8 @@ export async function deliverAlerts(
 			// Issue trackers file issues from /api/ingest instead (issue-trackers.server.ts).
 			if (
 				!integration.encryptedWebhookUrl ||
-				integration.provider === "linear"
+				integration.provider === "linear" ||
+				integration.provider === "jira"
 			) {
 				continue;
 			}
@@ -185,7 +186,7 @@ async function deliverEmail(
 async function deliverWebhook(
 	integration: {
 		id: string;
-		provider: Exclude<IntegrationProvider, "linear">;
+		provider: Exclude<IntegrationProvider, "linear" | "jira">;
 		encryptedWebhookUrl: string;
 		encryptedSigningSecret: string | null;
 	},
