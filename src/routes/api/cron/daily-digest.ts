@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { rejectUnlessCron } from "@/lib/cron-auth.server";
 import { runDailyDigest } from "@/lib/daily-digest.server";
 import { runLifecycleNudges } from "@/lib/lifecycle.server";
+import { warmSitePages } from "@/lib/site-report.functions";
 
 // Vercel Cron triggers this every morning (see vercel.json). Callable
 // manually with the CRON_SECRET bearer token for testing.
@@ -14,6 +15,8 @@ export const Route = createFileRoute("/api/cron/daily-digest")({
 					results: await runDailyDigest(),
 					// Onboarding reminders ride on the same daily cron.
 					lifecycle: await runLifecycleNudges(),
+					// Keeps the public Core Web Vitals pages' data fresh.
+					sitePagesWarmed: await warmSitePages().catch(() => 0),
 				}),
 		},
 	},

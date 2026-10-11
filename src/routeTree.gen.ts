@@ -15,6 +15,7 @@ import { Route as ContactRouteImport } from './routes/contact'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PricingRouteImport } from './routes/pricing'
 import { Route as PrivacyPolicyRouteImport } from './routes/privacy-policy'
+import { Route as SitemapDotxmlRouteImport } from './routes/sitemap[.]xml'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as AuthenticatedAlertsRouteImport } from './routes/_authenticated/alerts'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -25,7 +26,6 @@ import { Route as ApiBadgeRouteImport } from './routes/api/badge'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as CompareIndexRouteImport } from './routes/compare/index'
 import { Route as CompareSlugRouteImport } from './routes/compare/$slug'
-import { Route as ToolsCoreWebVitalsRouteImport } from './routes/tools/core-web-vitals'
 import { Route as AuthenticatedPullsIndexRouteImport } from './routes/_authenticated/pulls/index'
 import { Route as AuthenticatedPullsPrIdRouteImport } from './routes/_authenticated/pulls/$prId'
 import { Route as AuthenticatedRepositoriesIndexRouteImport } from './routes/_authenticated/repositories/index'
@@ -36,6 +36,8 @@ import { Route as ApiCronDailyDigestRouteImport } from './routes/api/cron/daily-
 import { Route as ApiCronWeeklyDigestRouteImport } from './routes/api/cron/weekly-digest'
 import { Route as ApiGithubSetupRouteImport } from './routes/api/github/setup'
 import { Route as ApiGithubWebhookRouteImport } from './routes/api/github/webhook'
+import { Route as ToolsCoreWebVitalsIndexRouteImport } from './routes/tools/core-web-vitals/index'
+import { Route as ToolsCoreWebVitalsSiteRouteImport } from './routes/tools/core-web-vitals/$site'
 import { Route as ApiIntegrationsDiscordCallbackRouteImport } from './routes/api/integrations/discord/callback'
 import { Route as ApiIntegrationsJiraCallbackRouteImport } from './routes/api/integrations/jira/callback'
 import { Route as ApiIntegrationsLinearCallbackRouteImport } from './routes/api/integrations/linear/callback'
@@ -68,6 +70,11 @@ const PricingRoute = PricingRouteImport.update({
 const PrivacyPolicyRoute = PrivacyPolicyRouteImport.update({
   id: '/privacy-policy',
   path: '/privacy-policy',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SitemapDotxmlRoute = SitemapDotxmlRouteImport.update({
+  id: '/sitemap.xml',
+  path: '/sitemap.xml',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TermsRoute = TermsRouteImport.update({
@@ -119,11 +126,6 @@ const CompareIndexRoute = CompareIndexRouteImport.update({
 const CompareSlugRoute = CompareSlugRouteImport.update({
   id: '/compare/$slug',
   path: '/compare/$slug',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ToolsCoreWebVitalsRoute = ToolsCoreWebVitalsRouteImport.update({
-  id: '/tools/core-web-vitals',
-  path: '/tools/core-web-vitals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedPullsIndexRoute = AuthenticatedPullsIndexRouteImport.update({
@@ -179,6 +181,16 @@ const ApiGithubWebhookRoute = ApiGithubWebhookRouteImport.update({
   path: '/api/github/webhook',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ToolsCoreWebVitalsIndexRoute = ToolsCoreWebVitalsIndexRouteImport.update({
+  id: '/tools/core-web-vitals/',
+  path: '/tools/core-web-vitals/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsCoreWebVitalsSiteRoute = ToolsCoreWebVitalsSiteRouteImport.update({
+  id: '/tools/core-web-vitals/$site',
+  path: '/tools/core-web-vitals/$site',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiIntegrationsDiscordCallbackRoute =
   ApiIntegrationsDiscordCallbackRouteImport.update({
     id: '/api/integrations/discord/callback',
@@ -210,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -219,7 +232,6 @@ export interface FileRoutesByFullPath {
   '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
-  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/compare/': typeof CompareIndexRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
@@ -229,8 +241,10 @@ export interface FileRoutesByFullPath {
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/api/github/webhook': typeof ApiGithubWebhookRoute
+  '/tools/core-web-vitals/$site': typeof ToolsCoreWebVitalsSiteRoute
   '/pulls/': typeof AuthenticatedPullsIndexRoute
   '/repositories/': typeof AuthenticatedRepositoriesIndexRoute
+  '/tools/core-web-vitals/': typeof ToolsCoreWebVitalsIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
   '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
@@ -242,6 +256,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/alerts': typeof AuthenticatedAlertsRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
@@ -251,7 +266,6 @@ export interface FileRoutesByTo {
   '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
-  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/compare': typeof CompareIndexRoute
   '/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
@@ -261,8 +275,10 @@ export interface FileRoutesByTo {
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/api/github/webhook': typeof ApiGithubWebhookRoute
+  '/tools/core-web-vitals/$site': typeof ToolsCoreWebVitalsSiteRoute
   '/pulls': typeof AuthenticatedPullsIndexRoute
   '/repositories': typeof AuthenticatedRepositoriesIndexRoute
+  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
   '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
@@ -276,6 +292,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/pricing': typeof PricingRoute
   '/privacy-policy': typeof PrivacyPolicyRoute
+  '/sitemap.xml': typeof SitemapDotxmlRoute
   '/terms': typeof TermsRoute
   '/_authenticated/alerts': typeof AuthenticatedAlertsRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
@@ -285,7 +302,6 @@ export interface FileRoutesById {
   '/api/badge': typeof ApiBadgeRoute
   '/api/ingest': typeof ApiIngestRoute
   '/compare/$slug': typeof CompareSlugRoute
-  '/tools/core-web-vitals': typeof ToolsCoreWebVitalsRoute
   '/compare/': typeof CompareIndexRoute
   '/_authenticated/pulls/$prId': typeof AuthenticatedPullsPrIdRoute
   '/_authenticated/repositories/$repoId': typeof AuthenticatedRepositoriesRepoIdRoute
@@ -295,8 +311,10 @@ export interface FileRoutesById {
   '/api/cron/weekly-digest': typeof ApiCronWeeklyDigestRoute
   '/api/github/setup': typeof ApiGithubSetupRoute
   '/api/github/webhook': typeof ApiGithubWebhookRoute
+  '/tools/core-web-vitals/$site': typeof ToolsCoreWebVitalsSiteRoute
   '/_authenticated/pulls/': typeof AuthenticatedPullsIndexRoute
   '/_authenticated/repositories/': typeof AuthenticatedRepositoriesIndexRoute
+  '/tools/core-web-vitals/': typeof ToolsCoreWebVitalsIndexRoute
   '/api/integrations/discord/callback': typeof ApiIntegrationsDiscordCallbackRoute
   '/api/integrations/jira/callback': typeof ApiIntegrationsJiraCallbackRoute
   '/api/integrations/linear/callback': typeof ApiIntegrationsLinearCallbackRoute
@@ -310,6 +328,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pricing'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/terms'
     | '/alerts'
     | '/dashboard'
@@ -319,7 +338,6 @@ export interface FileRouteTypes {
     | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
-    | '/tools/core-web-vitals'
     | '/compare/'
     | '/pulls/$prId'
     | '/repositories/$repoId'
@@ -329,8 +347,10 @@ export interface FileRouteTypes {
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/api/github/webhook'
+    | '/tools/core-web-vitals/$site'
     | '/pulls/'
     | '/repositories/'
+    | '/tools/core-web-vitals/'
     | '/api/integrations/discord/callback'
     | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
@@ -342,6 +362,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pricing'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/terms'
     | '/alerts'
     | '/dashboard'
@@ -351,7 +372,6 @@ export interface FileRouteTypes {
     | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
-    | '/tools/core-web-vitals'
     | '/compare'
     | '/pulls/$prId'
     | '/repositories/$repoId'
@@ -361,8 +381,10 @@ export interface FileRouteTypes {
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/api/github/webhook'
+    | '/tools/core-web-vitals/$site'
     | '/pulls'
     | '/repositories'
+    | '/tools/core-web-vitals'
     | '/api/integrations/discord/callback'
     | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
@@ -375,6 +397,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/pricing'
     | '/privacy-policy'
+    | '/sitemap.xml'
     | '/terms'
     | '/_authenticated/alerts'
     | '/_authenticated/dashboard'
@@ -384,7 +407,6 @@ export interface FileRouteTypes {
     | '/api/badge'
     | '/api/ingest'
     | '/compare/$slug'
-    | '/tools/core-web-vitals'
     | '/compare/'
     | '/_authenticated/pulls/$prId'
     | '/_authenticated/repositories/$repoId'
@@ -394,8 +416,10 @@ export interface FileRouteTypes {
     | '/api/cron/weekly-digest'
     | '/api/github/setup'
     | '/api/github/webhook'
+    | '/tools/core-web-vitals/$site'
     | '/_authenticated/pulls/'
     | '/_authenticated/repositories/'
+    | '/tools/core-web-vitals/'
     | '/api/integrations/discord/callback'
     | '/api/integrations/jira/callback'
     | '/api/integrations/linear/callback'
@@ -409,18 +433,20 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PricingRoute: typeof PricingRoute
   PrivacyPolicyRoute: typeof PrivacyPolicyRoute
+  SitemapDotxmlRoute: typeof SitemapDotxmlRoute
   TermsRoute: typeof TermsRoute
   AcceptInvitationInvitationIdRoute: typeof AcceptInvitationInvitationIdRoute
   ApiBadgeRoute: typeof ApiBadgeRoute
   ApiIngestRoute: typeof ApiIngestRoute
   CompareSlugRoute: typeof CompareSlugRoute
-  ToolsCoreWebVitalsRoute: typeof ToolsCoreWebVitalsRoute
   CompareIndexRoute: typeof CompareIndexRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiCronDailyDigestRoute: typeof ApiCronDailyDigestRoute
   ApiCronWeeklyDigestRoute: typeof ApiCronWeeklyDigestRoute
   ApiGithubSetupRoute: typeof ApiGithubSetupRoute
   ApiGithubWebhookRoute: typeof ApiGithubWebhookRoute
+  ToolsCoreWebVitalsSiteRoute: typeof ToolsCoreWebVitalsSiteRoute
+  ToolsCoreWebVitalsIndexRoute: typeof ToolsCoreWebVitalsIndexRoute
   ApiIntegrationsDiscordCallbackRoute: typeof ApiIntegrationsDiscordCallbackRoute
   ApiIntegrationsJiraCallbackRoute: typeof ApiIntegrationsJiraCallbackRoute
   ApiIntegrationsLinearCallbackRoute: typeof ApiIntegrationsLinearCallbackRoute
@@ -469,6 +495,13 @@ declare module '@tanstack/react-router' {
       path: '/privacy-policy'
       fullPath: '/privacy-policy'
       preLoaderRoute: typeof PrivacyPolicyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sitemap.xml': {
+      id: '/sitemap.xml'
+      path: '/sitemap.xml'
+      fullPath: '/sitemap.xml'
+      preLoaderRoute: typeof SitemapDotxmlRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/terms': {
@@ -541,13 +574,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CompareSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/tools/core-web-vitals': {
-      id: '/tools/core-web-vitals'
-      path: '/tools/core-web-vitals'
-      fullPath: '/tools/core-web-vitals'
-      preLoaderRoute: typeof ToolsCoreWebVitalsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated/pulls/': {
       id: '/_authenticated/pulls/'
       path: '/pulls'
@@ -618,6 +644,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiGithubWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/tools/core-web-vitals/': {
+      id: '/tools/core-web-vitals/'
+      path: '/tools/core-web-vitals'
+      fullPath: '/tools/core-web-vitals/'
+      preLoaderRoute: typeof ToolsCoreWebVitalsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/core-web-vitals/$site': {
+      id: '/tools/core-web-vitals/$site'
+      path: '/tools/core-web-vitals/$site'
+      fullPath: '/tools/core-web-vitals/$site'
+      preLoaderRoute: typeof ToolsCoreWebVitalsSiteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/integrations/discord/callback': {
       id: '/api/integrations/discord/callback'
       path: '/api/integrations/discord/callback'
@@ -684,18 +724,20 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PricingRoute: PricingRoute,
   PrivacyPolicyRoute: PrivacyPolicyRoute,
+  SitemapDotxmlRoute: SitemapDotxmlRoute,
   TermsRoute: TermsRoute,
   AcceptInvitationInvitationIdRoute: AcceptInvitationInvitationIdRoute,
   ApiBadgeRoute: ApiBadgeRoute,
   ApiIngestRoute: ApiIngestRoute,
   CompareSlugRoute: CompareSlugRoute,
-  ToolsCoreWebVitalsRoute: ToolsCoreWebVitalsRoute,
   CompareIndexRoute: CompareIndexRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiCronDailyDigestRoute: ApiCronDailyDigestRoute,
   ApiCronWeeklyDigestRoute: ApiCronWeeklyDigestRoute,
   ApiGithubSetupRoute: ApiGithubSetupRoute,
   ApiGithubWebhookRoute: ApiGithubWebhookRoute,
+  ToolsCoreWebVitalsSiteRoute: ToolsCoreWebVitalsSiteRoute,
+  ToolsCoreWebVitalsIndexRoute: ToolsCoreWebVitalsIndexRoute,
   ApiIntegrationsDiscordCallbackRoute: ApiIntegrationsDiscordCallbackRoute,
   ApiIntegrationsJiraCallbackRoute: ApiIntegrationsJiraCallbackRoute,
   ApiIntegrationsLinearCallbackRoute: ApiIntegrationsLinearCallbackRoute,

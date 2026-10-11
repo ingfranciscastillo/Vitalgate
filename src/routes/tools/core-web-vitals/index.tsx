@@ -25,13 +25,14 @@ import {
 	type CruxCheckResult,
 	checkCoreWebVitals,
 } from "@/lib/crux-checker.functions";
+import { CWV_CATEGORIES, CWV_SITES } from "@/lib/cwv-sites";
 import { ogImageMeta, SITE_URL } from "@/lib/seo";
 
 const PAGE_URL = `${SITE_URL}/tools/core-web-vitals`;
 const DESCRIPTION =
 	"Free Core Web Vitals checker: see INP, LCP and CLS for any site as real Chrome users experience them, with a 6-month INP trend and suggested performance budgets.";
 
-export const Route = createFileRoute("/tools/core-web-vitals")({
+export const Route = createFileRoute("/tools/core-web-vitals/")({
 	validateSearch: (search): { url?: string; device?: CruxCheckDevice } => ({
 		url:
 			typeof search.url === "string" && search.url.trim() !== ""
@@ -183,6 +184,38 @@ function CoreWebVitalsChecker() {
 						)}
 					</div>
 				)}
+			</section>
+
+			<section className="border-t border-border">
+				<div className="mx-auto max-w-4xl px-5 py-16">
+					<h2 className="text-xl font-bold tracking-tight">
+						Core Web Vitals of popular sites
+					</h2>
+					<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+						Real-user results for {CWV_SITES.length} sites, from the Chrome UX
+						Report.
+					</p>
+					<div className="mt-8 grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+						{CWV_CATEGORIES.map((category) => (
+							<div key={category}>
+								<h3 className="text-sm font-semibold">{category}</h3>
+								<ul className="mt-2 space-y-1 text-sm">
+									{CWV_SITES.filter((s) => s.category === category).map((s) => (
+										<li key={s.slug}>
+											<Link
+												to="/tools/core-web-vitals/$site"
+												params={{ site: s.slug }}
+												className="text-muted-foreground hover:text-foreground"
+											>
+												{s.name}
+											</Link>
+										</li>
+									))}
+								</ul>
+							</div>
+						))}
+					</div>
+				</div>
 			</section>
 
 			<section className="border-t border-border">
