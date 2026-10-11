@@ -3,9 +3,11 @@ import { db } from "@/db";
 import { integrations, pullIssues } from "@/db/schema";
 import { getAppUrl } from "@/lib/app-url.server";
 import { decryptSecret, encryptSecret } from "@/lib/crypto.server";
-import type {
-	IssueTrackerConfig,
-	IssueTrackerTarget,
+import {
+	type IssueTrackerConfig,
+	type IssueTrackerTarget,
+	resultsAsJiraTable,
+	resultsAsMarkdown,
 } from "@/lib/issue-trackers";
 import { createJiraIssue } from "@/lib/jira.server";
 import { isPro } from "@/lib/plan";
@@ -231,8 +233,8 @@ interface FailingPull {
 const issueSummary = (p: FailingPull) =>
 	`Performance budget failed: ${p.repoFullName} #${p.prNumber}`.slice(0, 250);
 
-const resultsTable = (p: FailingPull) =>
-	p.resultsMarkdown.replace(/<!--[\s\S]*?-->\n?/g, "").trim();
+const HEADLINE =
+	"A required performance budget was exceeded (median of 3 Lighthouse lab runs).";
 
 async function fileLinearIssue(p: FailingPull) {
 	const access = await linearAccess(p.organizationId);
@@ -255,7 +257,9 @@ async function fileLinearIssue(p: FailingPull) {
 				description: [
 					`**[${p.repoFullName} #${p.prNumber}](${prUrl})**: ${p.prTitle}`,
 					"",
-					resultsTable(p),
+					HEADLINE,
+					"",
+					resultsAsMarkdown(p.resultsMarkdown),
 					"",
 					`[Full report on Vitalgate](${p.pullUrl})`,
 				].join("\n"),
@@ -267,16 +271,16 @@ async function fileLinearIssue(p: FailingPull) {
 
 async function fileJiraIssue(p: FailingPull) {
 	const prUrl = `https://github.com/${p.repoFullName}/pull/${p.prNumber}`;
-	// Jira wiki markup: [text|url] links; the table goes in {noformat} as-is.
+	// Jira wiki markup: [text|url] links and a ||header|| table.
 	const safeTitle = p.prTitle.replace(/[[\]{}|]/g, " ");
 	return createJiraIssue(p.organizationId, {
 		summary: issueSummary(p),
 		description: [
 			`[${p.repoFullName} #${p.prNumber}|${prUrl}]: ${safeTitle}`,
 			"",
-			"{noformat}",
-			resultsTable(p).replace(/\{noformat\}/g, ""),
-			"{noformat}",
+			HEADLINE,
+			"",
+			resultsAsJiraTable(p.resultsMarkdown),
 			"",
 			`[Full report on Vitalgate|${p.pullUrl}]`,
 		].join("\n"),
