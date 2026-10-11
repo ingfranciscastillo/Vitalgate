@@ -84,7 +84,7 @@ export const COMPETITORS: Competitor[] = [
 			},
 			{
 				feature: "Alerts",
-				vitalgate: "Email, Slack and Discord",
+				vitalgate: "Email, Slack, Discord and webhooks",
 				them: "None built in",
 			},
 			{

@@ -91,7 +91,7 @@ export interface PullRequest {
 	baseline: Record<MetricKey, number>;
 }
 
-export type AlertChannel = "slack" | "discord" | "email";
+export type AlertChannel = "slack" | "discord" | "webhook" | "email";
 export type AlertLevel = "info" | "warning" | "critical";
 export type AlertRuleKey =
 	| "budget_violation"
@@ -104,7 +104,9 @@ export type NotificationPrefKey =
 	| "daily_digest"
 	| "weekly_summary"
 	| "getting_started";
-export type IntegrationProvider = "slack" | "discord";
+export type IntegrationProvider = "slack" | "discord" | "webhook";
+/** Integrations connected through an OAuth redirect (webhooks are pasted in instead). */
+export type OAuthIntegrationProvider = "slack" | "discord";
 
 export interface AlertItem {
 	id: string;

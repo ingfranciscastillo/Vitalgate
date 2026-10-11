@@ -217,7 +217,7 @@ function Features() {
 		{
 			icon: BellIcon,
 			title: "Smart alerts",
-			body: "Slack, Discord and email alerts on threshold breaches.",
+			body: "Email, Slack, Discord and webhook alerts on threshold breaches.",
 		},
 		{
 			icon: ShieldCheckIcon,
@@ -470,7 +470,7 @@ function PricingPreview() {
 			desc: "For teams protecting more than one repo.",
 			features: [
 				"Unlimited repositories",
-				"Slack + Discord alerts",
+				"Slack, Discord + webhook alerts",
 				"Custom alert rules",
 				"Weekly digest email",
 			],

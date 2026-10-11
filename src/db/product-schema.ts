@@ -333,6 +333,8 @@ export const integrations = pgTable(
 		label: text("label").notNull(),
 		/** AES-256-GCM ciphertext, "iv.authTag.ciphertext" (each base64) — see crypto.server.ts. */
 		encryptedWebhookUrl: text("encrypted_webhook_url").notNull(),
+		/** Outgoing webhooks only: the HMAC signing secret, encrypted like the URL. */
+		encryptedSigningSecret: text("encrypted_signing_secret"),
 		createdAt: timestamp("created_at").defaultNow().notNull(),
 	},
 	(t) => [

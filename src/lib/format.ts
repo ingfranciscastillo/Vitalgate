@@ -8,7 +8,12 @@ export function timeAgo(iso: string | Date | null): string {
 	return `${days}d ago`;
 }
 
-const CHANNEL_LABEL = { email: "Email", slack: "Slack", discord: "Discord" };
+const CHANNEL_LABEL = {
+	email: "Email",
+	slack: "Slack",
+	discord: "Discord",
+	webhook: "Webhook",
+};
 
 /** "Email, Slack" — or "Not delivered" when an alert reached no channel. */
 export function formatDelivery(

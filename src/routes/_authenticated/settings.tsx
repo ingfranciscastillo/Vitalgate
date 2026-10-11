@@ -33,12 +33,18 @@ import { authClient } from "@/lib/auth-client";
 import { billingOverviewQueryOptions } from "@/lib/billing.queries";
 import { timeAgo } from "@/lib/format";
 import {
+	connectWebhook,
 	disconnectIntegration,
 	getGithubInstallUrl,
 	getIntegrationAuthorizeUrl,
+	getWebhookSecret,
+	sendTestWebhook,
 } from "@/lib/integrations.functions";
 import { integrationsOverviewQueryOptions } from "@/lib/integrations.queries";
-import type { IntegrationProvider } from "@/lib/mock-data";
+import type {
+	IntegrationProvider,
+	OAuthIntegrationProvider,
+} from "@/lib/mock-data";
 import { EASE_IN, EASE_OUT, staggerContainer, staggerItem } from "@/lib/motion";
 import { setNotificationPref } from "@/lib/notification-prefs.functions";
 import { notificationPrefsQueryOptions } from "@/lib/notification-prefs.queries";
@@ -239,6 +245,193 @@ function IntegrationCardShell({
 	);
 }
 
+/**
+ * Outgoing webhook: paste an https URL, get a signing secret, receive every
+ * alert as signed JSON. Pro only, like Slack and Discord.
+ */
+function WebhookCard({
+	connected,
+	label,
+	pro,
+	isAdmin,
+}: {
+	connected: boolean;
+	label: string | null;
+	pro: boolean;
+	isAdmin: boolean;
+}) {
+	const queryClient = useQueryClient();
+	const [url, setUrl] = useState("");
+	const [editing, setEditing] = useState(false);
+	const [secret, setSecret] = useState<string | null>(null);
+
+	const connect = useMutation({
+		mutationFn: connectWebhook,
+		onSuccess: ({ secret }) => {
+			setSecret(secret);
+			setEditing(false);
+			setUrl("");
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success("Webhook connected");
+		},
+		onError: (err) =>
+			toast.error(
+				err instanceof Error ? err.message : "Could not connect the webhook",
+			),
+	});
+	const test = useMutation({
+		mutationFn: sendTestWebhook,
+		onSuccess: ({ status }) =>
+			status >= 200 && status < 300
+				? toast.success(`Test event delivered (HTTP ${status})`)
+				: toast.error(`Your endpoint answered HTTP ${status}`),
+		onError: (err) =>
+			toast.error(err instanceof Error ? err.message : "Test failed"),
+	});
+	const reveal = useMutation({
+		mutationFn: getWebhookSecret,
+		onSuccess: (s) => setSecret(s),
+		onError: () => toast.error("Could not load the signing secret"),
+	});
+	const disconnect = useMutation({
+		mutationFn: disconnectIntegration,
+		onSuccess: () => {
+			setSecret(null);
+			queryClient.invalidateQueries({ queryKey: ["integrations-overview"] });
+			toast.success("Webhook disconnected");
+		},
+		onError: () => toast.error("Could not disconnect"),
+	});
+
+	const form = (
+		<form
+			className="flex flex-col gap-2 sm:flex-row"
+			onSubmit={(e) => {
+				e.preventDefault();
+				connect.mutate({ data: { url } });
+			}}
+		>
+			<Input
+				type="url"
+				inputMode="url"
+				placeholder="https://example.com/hooks/vitalgate"
+				aria-label="Webhook URL"
+				value={url}
+				onChange={(e) => setUrl(e.target.value)}
+				className="font-mono text-xs"
+			/>
+			<Button
+				type="submit"
+				size="sm"
+				loading={connect.isPending}
+				disabled={!url.trim() || !isAdmin}
+			>
+				{connect.isPending ? "Connecting…" : "Connect"}
+			</Button>
+		</form>
+	);
+
+	return (
+		<IntegrationCardShell
+			icon={WebhooksLogoIcon}
+			name="Webhook"
+			connected={connected}
+			proLocked={!pro}
+			desc={
+				connected
+					? `Every alert is POSTed as signed JSON to ${label ?? "your endpoint"}.`
+					: pro
+						? "POST every alert as signed JSON to a URL you choose."
+						: "Upgrade to Pro to send alerts to your own endpoint"
+			}
+		>
+			{!pro ? (
+				<Link to="/settings" search={{ tab: "billing" }}>
+					<Button variant="outline" size="sm">
+						Upgrade to Pro
+					</Button>
+				</Link>
+			) : !connected || editing ? (
+				form
+			) : (
+				<div className="space-y-3">
+					<div className="flex flex-wrap gap-2">
+						<Button
+							size="sm"
+							variant="outline"
+							loading={test.isPending}
+							disabled={!isAdmin}
+							onClick={() => test.mutate({})}
+						>
+							{test.isPending ? "Sending…" : "Send test event"}
+						</Button>
+						{!secret && (
+							<Button
+								size="sm"
+								variant="outline"
+								loading={reveal.isPending}
+								disabled={!isAdmin}
+								onClick={() => reveal.mutate({})}
+							>
+								Show signing secret
+							</Button>
+						)}
+						<Button
+							size="sm"
+							variant="ghost"
+							disabled={!isAdmin}
+							onClick={() => setEditing(true)}
+						>
+							Change URL
+						</Button>
+						<Button
+							size="sm"
+							variant="ghost"
+							loading={disconnect.isPending}
+							disabled={!isAdmin}
+							onClick={() => disconnect.mutate({ data: "webhook" })}
+						>
+							Disconnect
+						</Button>
+					</div>
+				</div>
+			)}
+			{secret && pro && (
+				<div className="mt-3 rounded-md border border-border bg-muted/40 p-3">
+					<div className="flex items-center justify-between gap-2">
+						<span className="text-xs font-medium">Signing secret</span>
+						<Button
+							size="xs"
+							variant="ghost"
+							onClick={() => {
+								navigator.clipboard
+									.writeText(secret)
+									.then(() => toast.success("Copied"));
+							}}
+						>
+							Copy
+						</Button>
+					</div>
+					<code className="mt-1 block break-all font-mono text-xs">
+						{secret}
+					</code>
+					<p className="mt-2 text-xs text-muted-foreground">
+						Each request carries{" "}
+						<code className="font-mono">X-Vitalgate-Signature: v1=…</code>, the
+						HMAC-SHA256 of{" "}
+						<code className="font-mono">
+							{"{X-Vitalgate-Timestamp}.{raw body}"}
+						</code>{" "}
+						with this secret. Reject requests whose signature doesn't match or
+						whose timestamp is more than 5 minutes old. Changing the URL creates
+						a new secret.
+					</p>
+				</div>
+			)}
+		</IntegrationCardShell>
+	);
+}
+
 function IntegrationsTab() {
 	const { data, isPending } = useQuery(integrationsOverviewQueryOptions());
 	const queryClient = useQueryClient();
@@ -295,7 +488,7 @@ function IntegrationsTab() {
 		}
 	};
 
-	const connect = async (provider: IntegrationProvider) => {
+	const connect = async (provider: OAuthIntegrationProvider) => {
 		setConnecting(provider);
 		try {
 			const url = await getIntegrationAuthorizeUrl({ data: provider });
@@ -462,6 +655,15 @@ function IntegrationsTab() {
 						)}
 					</IntegrationCardShell>
 				</motion.div>
+
+				<motion.div variants={staggerItem(reduce)}>
+					<WebhookCard
+						connected={data.webhook.connected}
+						label={data.webhook.label}
+						pro={isPro(data.plan)}
+						isAdmin={isAdmin === true}
+					/>
+				</motion.div>
 			</motion.div>
 
 			<section className="mt-8 max-w-3xl">
@@ -512,11 +714,6 @@ const UPCOMING_INTEGRATIONS: {
 		icon: TicketIcon,
 		name: "Jira",
 		desc: "Create a ticket for each regression, linked to its pull request.",
-	},
-	{
-		icon: WebhooksLogoIcon,
-		name: "Webhooks",
-		desc: "POST every alert as JSON to a URL you choose.",
 	},
 ];
 

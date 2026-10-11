@@ -4,6 +4,7 @@ import { z } from "zod";
 import { db } from "@/db";
 import { account, githubInstallations, integrations, repos } from "@/db/schema";
 import { ensureSession } from "@/lib/auth.functions";
+import { decryptSecret, encryptSecret } from "@/lib/crypto.server";
 import { getInstallUrl, isGithubAppConfigured } from "@/lib/github-app.server";
 import {
 	deleteIntegration,
@@ -12,9 +13,19 @@ import {
 } from "@/lib/integrations.server";
 import { signOAuthState } from "@/lib/oauth-state.server";
 import { requireOrgAdmin } from "@/lib/org-access.server";
+import {
+	checkWebhookUrl,
+	newSigningSecret,
+	pingPayload,
+	sendWebhook,
+} from "@/lib/outgoing-webhook.server";
 import { isPro, type Plan } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
-import { integrationProviderSchema, parseInput } from "@/lib/validation";
+import {
+	integrationProviderSchema,
+	oauthIntegrationProviderSchema,
+	parseInput,
+} from "@/lib/validation";
 
 export interface IntegrationsOverview {
 	github: {
@@ -27,6 +38,7 @@ export interface IntegrationsOverview {
 	};
 	slack: { connected: boolean; label: string | null };
 	discord: { connected: boolean; label: string | null };
+	webhook: { connected: boolean; label: string | null };
 	/** Slack/Discord are Pro-only; the client uses this to show an upgrade prompt instead of a Connect button. */
 	plan: Plan;
 }
@@ -95,13 +107,17 @@ export const getIntegrationsOverview = createServerFn({
 			connected: byProvider.has("discord"),
 			label: byProvider.get("discord") ?? null,
 		},
+		webhook: {
+			connected: byProvider.has("webhook"),
+			label: byProvider.get("webhook") ?? null,
+		},
 		plan,
 	};
 });
 
 /** URL to redirect the browser to, to start the Slack/Discord OAuth flow for the active org. */
 export const getIntegrationAuthorizeUrl = createServerFn({ method: "GET" })
-	.validator(parseInput(integrationProviderSchema))
+	.validator(parseInput(oauthIntegrationProviderSchema))
 	.handler(async ({ data: provider }): Promise<string> => {
 		const { organizationId } = await requireOrgAdmin();
 
@@ -136,3 +152,83 @@ export const getGithubInstallUrl = createServerFn({ method: "GET" })
 		// page to send the user back to.
 		return getInstallUrl(signOAuthState(organizationId, returnTo));
 	});
+
+/**
+ * Connects (or replaces) the workspace's outgoing webhook: checks the URL,
+ * generates a new signing secret and stores both encrypted. Returns the
+ * secret so the admin can set up verification right away. Pro only.
+ */
+export const connectWebhook = createServerFn({ method: "POST" })
+	.validator(parseInput(z.object({ url: z.string().trim().max(2048) })))
+	.handler(async ({ data }): Promise<{ secret: string }> => {
+		const { organizationId } = await requireOrgAdmin();
+		if (!isPro(await getOrgPlan(organizationId))) {
+			throw new Error("Webhooks are a Pro feature. Upgrade to connect one.");
+		}
+		const url = checkWebhookUrl(data.url);
+		if (typeof url === "string") throw new Error(url);
+
+		const secret = newSigningSecret();
+		const values = {
+			label: url.host,
+			encryptedWebhookUrl: encryptSecret(url.toString()),
+			encryptedSigningSecret: encryptSecret(secret),
+		};
+		await db
+			.insert(integrations)
+			.values({ organizationId, provider: "webhook", ...values })
+			.onConflictDoUpdate({
+				target: [integrations.organizationId, integrations.provider],
+				set: values,
+			});
+		return { secret };
+	});
+
+async function getWorkspaceWebhook(organizationId: string) {
+	const [row] = await db
+		.select({
+			encryptedWebhookUrl: integrations.encryptedWebhookUrl,
+			encryptedSigningSecret: integrations.encryptedSigningSecret,
+		})
+		.from(integrations)
+		.where(
+			and(
+				eq(integrations.organizationId, organizationId),
+				eq(integrations.provider, "webhook"),
+			),
+		)
+		.limit(1);
+	if (!row?.encryptedSigningSecret) throw new Error("No webhook is connected");
+	return {
+		url: decryptSecret(row.encryptedWebhookUrl),
+		secret: decryptSecret(row.encryptedSigningSecret),
+	};
+}
+
+/** The webhook's signing secret, for an admin setting up verification. */
+export const getWebhookSecret = createServerFn({ method: "GET" }).handler(
+	async (): Promise<string> => {
+		const { organizationId } = await requireOrgAdmin();
+		return (await getWorkspaceWebhook(organizationId)).secret;
+	},
+);
+
+/** Sends a signed "ping" event and reports what the endpoint answered. */
+export const sendTestWebhook = createServerFn({ method: "POST" }).handler(
+	async (): Promise<{ status: number }> => {
+		const { organizationId } = await requireOrgAdmin();
+		const hook = await getWorkspaceWebhook(organizationId);
+		try {
+			const status = await sendWebhook({
+				...hook,
+				event: "ping",
+				payload: pingPayload(organizationId),
+			});
+			return { status };
+		} catch (err) {
+			throw new Error(
+				`Couldn't reach the webhook: ${err instanceof Error ? err.message : String(err)}`,
+			);
+		}
+	},
+);

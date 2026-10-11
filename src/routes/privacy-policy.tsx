@@ -210,6 +210,12 @@ function PrivacyPolicy() {
 									<strong>Slack / Discord</strong> — only if you connect them,
 									to receive the alerts posted to your channel.
 								</li>
+								<li>
+									<strong>Your webhook endpoint</strong> — only if you connect
+									one: each alert (repository, pull request number, title and
+									author, and the metrics that broke) is sent to the URL you
+									chose.
+								</li>
 							</ul>
 							<p>
 								We may also disclose data if the law requires it, for example in
@@ -252,8 +258,9 @@ function PrivacyPolicy() {
 						<section>
 							<h2>8. Security</h2>
 							<p>
-								Traffic to the site is encrypted with HTTPS. Slack and Discord
-								webhook URLs and GitHub sign-in tokens are encrypted at rest.
+								Traffic to the site is encrypted with HTTPS. Slack, Discord and
+								webhook URLs, webhook signing secrets and GitHub sign-in tokens
+								are encrypted at rest.
 								Every request for workspace data is checked against your active
 								workspace, so one workspace can't read another's data. No system
 								is perfectly secure; if a breach affects your personal data,

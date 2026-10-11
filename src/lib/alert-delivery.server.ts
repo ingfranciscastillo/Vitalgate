@@ -19,6 +19,7 @@ import type {
 	IntegrationProvider,
 	NotificationPrefKey,
 } from "@/lib/mock-data";
+import { alertsPayload, sendWebhook } from "@/lib/outgoing-webhook.server";
 import { isPro } from "@/lib/plan";
 import { getOrgPlan } from "@/lib/plan.server";
 
@@ -64,6 +65,7 @@ export async function deliverAlerts(
 				id: integrations.id,
 				provider: integrations.provider,
 				encryptedWebhookUrl: integrations.encryptedWebhookUrl,
+				encryptedSigningSecret: integrations.encryptedSigningSecret,
 			})
 			.from(integrations)
 			.where(eq(integrations.organizationId, ctx.organizationId)),
@@ -165,12 +167,28 @@ async function deliverWebhook(
 		id: string;
 		provider: IntegrationProvider;
 		encryptedWebhookUrl: string;
+		encryptedSigningSecret: string | null;
 	},
 	alerts: AlertToDeliver[],
 	ctx: AlertContext,
 	links: AlertLinks,
 ): Promise<AlertChannel | null> {
 	const url = decryptSecret(integration.encryptedWebhookUrl);
+
+	if (integration.provider === "webhook") {
+		if (!integration.encryptedSigningSecret) return null;
+		const status = await sendWebhook({
+			url,
+			secret: decryptSecret(integration.encryptedSigningSecret),
+			event: "alerts.created",
+			payload: alertsPayload(alerts, ctx, links),
+		});
+		if (status >= 200 && status < 300) return "webhook";
+		// Unlike Slack and Discord, a 404 here may be a deploy in progress on
+		// the receiver's side, so the webhook is kept.
+		throw new Error(`Outgoing webhook responded ${status}`);
+	}
+
 	const body =
 		integration.provider === "slack"
 			? slackPayload(alerts, ctx, links)

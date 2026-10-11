@@ -3,6 +3,7 @@ import type {
 	AlertRuleKey,
 	IntegrationProvider,
 	NotificationPrefKey,
+	OAuthIntegrationProvider,
 } from "@/lib/mock-data";
 
 /**
@@ -17,7 +18,13 @@ export const idSchema = z.string().min(1).max(64);
 export const integrationProviderSchema = z.enum([
 	"slack",
 	"discord",
+	"webhook",
 ]) satisfies z.ZodType<IntegrationProvider>;
+
+export const oauthIntegrationProviderSchema = z.enum([
+	"slack",
+	"discord",
+]) satisfies z.ZodType<OAuthIntegrationProvider>;
 
 export const alertRuleKeySchema = z.enum([
 	"budget_violation",
