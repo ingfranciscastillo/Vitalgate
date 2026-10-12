@@ -6,7 +6,7 @@
 
 **Performance budgets for every pull request.**
 
-[![CI](https://github.com/ingfranciscastillo/Vitalgate/actions/workflows/ci.yml/badge.svg)](https://github.com/ingfranciscastillo/Vitalgate/actions/workflows/ci.yml)
+[![CI](https://github.com/vitalgatehq/vitalgate/actions/workflows/ci.yml/badge.svg)](https://github.com/vitalgatehq/vitalgate/actions/workflows/ci.yml)
 ![Node](https://img.shields.io/badge/node-%E2%89%A522-339933?logo=node.js&logoColor=white)
 ![pnpm](https://img.shields.io/badge/pnpm-12-F69220?logo=pnpm&logoColor=white)
 ![TypeScript](https://img.shields.io/badge/TypeScript-7-3178C6?logo=typescript&logoColor=white)
